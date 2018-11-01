@@ -17,10 +17,11 @@ jobs:
     #### expecting it in the form of
     ####   /go/src/github.com/circleci/go-tool
     ####   /go/src/bitbucket.org/circleci/go-tool
-    working_directory: /go/src/github.com/Ankr-network/dccn-daemon
+    working_directory: ~/app
     steps:
       - checkout
       - setup_remote_docker
 
       # specify any bash command here prefixed with `run: `
-      - run: docker build -t hello-node:v$ .
+      # - run: go run hello-world.go
+      - run: docker build -t hello-node:v1 .
