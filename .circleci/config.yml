@@ -6,7 +6,7 @@ jobs:
   build:
     docker:
       # specify the version
-      - image: circleci/golang:1.9
+      - image: circleci/python:2.7-jessie-node-browsers
       
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -20,6 +20,7 @@ jobs:
     working_directory: /go/src/github.com/Ankr-network/dccn-daemon
     steps:
       - checkout
+      - setup_remote_docker
 
       # specify any bash command here prefixed with `run: `
-      - run: go run hello-world.go
+      - run: docker build -t hello-node:v$ .
