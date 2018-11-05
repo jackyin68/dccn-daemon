@@ -1,4 +1,9 @@
-FROM node:6.14.2
-EXPOSE 8080
-COPY server.js .
-CMD node server.js
+FROM golang:1.11.1-stretch
+
+WORKDIR /go/src/app
+COPY . .
+
+RUN go get -d -v ./...
+RUN go install -v ./...
+
+CMD ["hello-world"]
