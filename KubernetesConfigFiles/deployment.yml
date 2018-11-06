@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-go-svc
+spec:
+  selector:
+    app: hello-go
+    tier: frontend
+  ports:
+  - protocol: "TCP"
+    port: 8080
+    nodePort: 30042
+    targetPort: 8080
+  type: NodePort
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: hello-go-dep
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: hello-go
+        tier: frontend
+        track: stable
+    spec:
+      imagePullSecrets:
+      - name: aws-ecr
+      containers:
+      - name: ankr-app
+        image: "815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:hello-go"
+        ports:
+        - name: http
+          containerPort: 8080
+        imagePullPolicy: Always
