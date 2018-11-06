@@ -21,7 +21,27 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
+      - run:
+          name: Install AWSCLI
+          command: |
+            curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
+            unzip awscli-bundle.zip
+            sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+
+      - run:
+          name: "Log in to AWS ECR"
+          command: eval $(aws ecr get-login --no-include-email --region us-west-2)
+
+      - run:
+          name: "Build & Push Docker Image"
+          command: |
+            docker build -t hello-go .
+            docker tag hello-go:latest 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:hello-go
+            docker push 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:hello-go
+
+
+      # http://815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr
 
       # specify any bash command here prefixed with `run: `
       # - run: go run hello-world.go
-      - run: docker build -t hello-go:v1 .
+      # - run: docker build -t hello-go:v1 .
