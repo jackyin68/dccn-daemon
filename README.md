@@ -71,6 +71,8 @@ ip-172-20-45-20.us-west-1.compute.internal    Ready,node     8m        v1.10.6  
 ip-172-20-57-72.us-west-1.compute.internal    Ready,node     8m        v1.10.6   54.183.252.174   Debian GNU/Linux 8 (jessie)   4.4.148-k8s
 ```
 
+Now that we have the nodes up and running, we need to change the security groups for both nodes so that we can access the hello world application. To do so, we go to AWS EC2, find "Security groups" under the instance "Description" and then create a new "Inbound" rule, exposing ports 30000-30600 and on the ip 0.0.0.0. 
+
 Here we can see the external ip for ip-172-20-45-20.us-west-1.compute.internal is 13.57.244.234, and we can navigate to 13.57.244.234:30042 to see the hello world example running.
 
 ## Cleanup
