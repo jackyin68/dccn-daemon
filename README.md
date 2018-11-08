@@ -25,6 +25,23 @@ To run this CI/CD pipeline and deploy the Docker image on Kubernetes, the depend
 * Kubernetes Operations: `kops` (https://github.com/kubernetes/kops)
 * git
 
+Tested with:
+
+```
+$ kubectl version
+Client Version: version.Info{Major:"1", Minor:"6", GitVersion:"v1.6.0", GitCommit:"fff5156092b56e6bd60fff75aad4dc9de6b6ef37", GitTreeState:"clean", BuildDate:"2017-03-28T16:36:33Z", GoVersion:"go1.7.5", Compiler:"gc", Platform:"darwin/amd64"}
+```
+
+```
+$ aws --version
+aws-cli/1.16.12 Python/2.7.15 Darwin/17.5.0 botocore/1.12.2
+```
+
+```
+$ kops version
+Version 1.10.0 (git-8b52ea6d1)
+```
+
 ## Running CI/CD pipeline
 
 Whenever we make a commit to GitHub for the `dccn-daemon` repo, CircleCI will automatically create a job that will create a Docker image based on the specifications in the Dockerfile and push it to ECR.
