@@ -37,13 +37,13 @@ After committing and pushing that trivial change, the pipeline will trigger and 
 
 2. Then create a cluster (feat. micro-instances for cost consideration) w/:
 ```
-kops create cluster \\
-  --node-count=2 \\
-  --master-size=t2.micro \\
-  --master-volume-size 16 \\
-  --node-size=t2.micro \\
-  --node-volume-size 8 \\
-  --zones=us-west-1a \\
+kops create cluster \
+  --node-count=2 \
+  --master-size=t2.micro \
+  --master-volume-size 16 \
+  --node-size=t2.micro \
+  --node-volume-size 8 \
+  --zones=us-west-1a \
   --name=${KOPS_CLUSTER_NAME}
 ```
 
@@ -95,7 +95,7 @@ In this specific cluster, the external IP address for `ip-172-20-45-20.us-west-1
 
 Delete the Kubernetes cluster w/:
 ```
-kops delete cluster \\
-  --name=${KOPS_CLUSTER_NAME} \\
+kops delete cluster \
+  --name=${KOPS_CLUSTER_NAME} \
   --state=s3://${KOPS_BUCKET_NAME} --yes
 ```
