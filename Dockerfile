@@ -1,3 +1,4 @@
+# UPGRADE: Go Docker image
 FROM golang:1.11.1-stretch
 
 WORKDIR /go/src/hello-world
