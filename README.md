@@ -44,7 +44,7 @@ Version 1.10.0 (git-8b52ea6d1)
 
 ## Running CI/CD pipeline
 
-Whenever we make a commit to GitHub for the `dccn-daemon` repo, CircleCI will automatically create a job that will create a Docker image based on the specifications in the Dockerfile and push it to ECR.
+Whenever we make a commit to GitHub for the `dccn-daemon` repo, CircleCI will automatically create a job that will create a Docker image based on the specifications in the Dockerfile and push it to ECR. To do so, we need to give the CircleCI repository an AWS access key, which we can do by navigating to the CircleCI Repository's Settings, on the left bar scrolling down to Permissions, clicking on AWS Permissions, and adding an AWS access key there.
 In this case, we are creating a hello-world Docker image, and to test the pipeline, we simply need to make a trivial change to one of our files in this repository, such as an extra newline.
 After committing and pushing that trivial change, the pipeline will trigger and a Docker image will be created and pushed to ECR.
 
@@ -73,8 +73,10 @@ $ export password=$(aws ecr get-authorization-token --output text --query author
 
 3. Store the authorization token from AWS ECR into a secret in Kubernetes:
 ```
-$ kubectl create secret docker-registry aws-ecr --docker-server=https://815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr --docker-username=AWS --docker-password=$password --docker-email=hanping@ankr.network
+$ kubectl create secret docker-registry aws-ecr --docker-server=https://815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr --docker-username=AWS --docker-password=$password --docker-email=${YOUR_EMAIL}
 ```
+
+Email field here is irrelevent, but is required to run the command for some reason.
 
 4. Deploy the application to Kubernetes using the configuration file in the `KubernetesConfigFiles` directory:
 ```

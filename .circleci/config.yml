@@ -6,8 +6,7 @@ jobs:
   build:
     docker:
       # specify the version
-      # - image: circleci/golang:1.8
-      - image: circleci/python:2.7-jessie-node-browsers
+      - image: circleci/buildpack-deps
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -18,7 +17,6 @@ jobs:
     #### expecting it in the form of
     ####   /go/src/github.com/circleci/go-tool
     ####   /go/src/bitbucket.org/circleci/go-tool
-    # working_directory: /go/src/github.com/Ankr-network/dccn-daemon
     working_directory: ~/app
     steps:
       - checkout
