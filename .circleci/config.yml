@@ -6,7 +6,7 @@ jobs:
   build:
     docker:
       # specify the version
-      - image: circleci/buildpack-deps
+      - image: circleci/python:2.7-jessie-node-browsers
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
