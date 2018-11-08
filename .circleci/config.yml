@@ -5,6 +5,7 @@ version: 2
 jobs:
   build:
     docker:
+      # Build in Python container to install AWS CLI
       - image: circleci/python:2.7.15-stretch
     working_directory: ~/app
     steps:
