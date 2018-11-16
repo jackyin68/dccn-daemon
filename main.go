@@ -3,6 +3,7 @@ package main
 
 import (
 	"flag"
+	"io"
 	"fmt"
 	"path/filepath"
 
@@ -30,7 +31,53 @@ const (
 	address  = "10.0.0.61:50051"
 )
 
-func querytask() {
+
+// runRouteChat receives a sequence of route notes, while sending notes for various locations.
+func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) {
+        var taskType string
+        ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Second)
+        defer cancel()
+        stream, err := client.K8Task(ctx)
+        if err != nil {
+            log.Fatalf("%v.RouteChat(_) = _, %v", client, err)
+        }
+        waitc := make(chan struct{})
+        go func() {
+            for {
+                in, err := stream.Recv()
+                if err == io.EOF {
+                        close(waitc)
+                        return
+                }
+                if err != nil {
+                        log.Fatalf("Failed to receive a note : %v", err)
+                }
+                fmt.Printf("Got message %d %s %s \n", in.Taskid , in.Name, in.Extra)
+
+                if len(in.Name) > 0 {
+                    taskType = CREATE_TASK
+                }
+            }
+        }()
+
+        if taskType == CREATE_TASK {
+            ankr_create_task(clientset)
+        }
+
+        //var messageFail = pb.TaskStatus{Taskid: -1, Status:"Failure"}
+        var messageSucc = pb.TaskStatus{Taskid:  1, Status:"Successful"}
+        if err := stream.Send(&messageSucc); err != nil {
+            log.Fatalf("Failed to send a note: %v", err)
+        }
+
+        fmt.Printf("send TaskStatus  message %d %s \n", messageSucc.Taskid , messageSucc.Status)
+
+        //stream.CloseSend()
+        <-waitc
+}
+
+
+func querytask(clientset *kubernetes.Clientset) {
 	conn, err := gogrpc.Dial(address, gogrpc.WithInsecure())
 	if err != nil {
 	    log.Fatalf("did not connect: %v", err)
@@ -38,6 +85,10 @@ func querytask() {
 	defer conn.Close()
 	c := pb.NewDccncliClient(conn)
 
+        sendTaskStatus(c, clientset)
+
+/*synchronous one time call*/
+/*
 	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second )
 	defer cancel()
 
@@ -48,6 +99,7 @@ func querytask() {
         }
 
         fmt.Printf("received new task  : %d %s %s \n", r.Taskid, r.Name, r.Extra)
+*/
 }
 
 func sendreport() {
@@ -206,5 +258,5 @@ func main() {
                 ankr_delete_task(clientset)
         }
 
-        querytask()
+        querytask(clientset)
 }
