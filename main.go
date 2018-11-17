@@ -52,20 +52,48 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) {
                 if err != nil {
                         log.Fatalf("Failed to receive a note : %v", err)
                 }
-                fmt.Printf("Got message %d %s %s \n", in.Taskid , in.Name, in.Extra)
+                //fmt.Printf("Got message %d %s %s %s\n", in.Taskid , in.Name, in.Extra, in.Type)
 
-                if len(in.Name) > 0 {
+                if in.Type == "HeartBeat" {
+                    fmt.Printf("Heartbeat!\n")
+                } else  {
+                    fmt.Printf("Got message %d %s %s %s\n", in.Taskid , in.Name, in.Extra, in.Type)
+                }
+
+                if in.Type == "NewTask" {
                     taskType = CREATE_TASK
                 }
+
+                if in.Type == "CancelTask" {
+                    taskType = DELETE_TASK
+                }
+
+                if taskType == CREATE_TASK {
+                    fmt.Printf("starting the task\n")
+                    ankr_create_task(clientset)
+                    fmt.Printf("finish starting the task\n")
+                    var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Status:"StartSuccess", Datacenter:"datacenter_2"}
+                    if err := stream.Send(&messageSucc); err != nil {
+                       log.Fatalf("Failed to send a note: %v", err)
+                    }
+                }
+
+                if taskType == DELETE_TASK {
+                    fmt.Printf("canceling the task")
+                    ankr_delete_task(clientset)
+                    fmt.Printf("finish canceling the task")
+                    var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Status:"Cancelled", Datacenter:"datacenter_2"}
+                    if err := stream.Send(&messageSucc); err != nil {
+                       log.Fatalf("Failed to send a note: %v", err)
+                    }
+                }
+              
+                taskType = ""
             }
         }()
 
-        if taskType == CREATE_TASK {
-            ankr_create_task(clientset)
-        }
-
         //var messageFail = pb.TaskStatus{Taskid: -1, Status:"Failure"}
-        var messageSucc = pb.TaskStatus{Taskid:  1, Status:"Successful"}
+        var messageSucc = pb.K8SMessage{Taskid:  1, Status:"StartSuccess", Datacenter:"datacenter_2"}
         if err := stream.Send(&messageSucc); err != nil {
             log.Fatalf("Failed to send a note: %v", err)
         }
@@ -85,7 +113,9 @@ func querytask(clientset *kubernetes.Clientset) {
 	defer conn.Close()
 	c := pb.NewDccncliClient(conn)
 
-        sendTaskStatus(c, clientset)
+        for  {
+            sendTaskStatus(c, clientset)
+        }
 
 /*synchronous one time call*/
 /*
@@ -129,7 +159,7 @@ func ankr_delete_task(clientset *kubernetes.Clientset) bool {
 	if err := deploymentsClient.Delete("demo-deployment", &metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	}); err != nil {
-		panic(err)
+		//panic(err)
                 return false
 	}
 
@@ -204,7 +234,8 @@ func ankr_create_task(clientset *kubernetes.Clientset) bool {
 	fmt.Println("Creating deployment...")
 	result, err := deploymentsClient.Create(deployment)
 	if err != nil {
-		panic(err)  //probably already exist
+		//panic(err)  //probably already exist
+                fmt.Println("probably already exist.\n")
                 return false
 	}
 	fmt.Printf("Created deployment %q.\n", result.GetObjectMeta().GetName())
