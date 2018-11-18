@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io"
 	"fmt"
+	"strconv"
 	"path/filepath"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,13 +34,15 @@ const (
 
 
 // runRouteChat receives a sequence of route notes, while sending notes for various locations.
-func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) {
+func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) int{
+        var ret int = 0
         var taskType string
         ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Second)
         defer cancel()
         stream, err := client.K8Task(ctx)
         if err != nil {
-            log.Fatalf("%v.RouteChat(_) = _, %v", client, err)
+            //log.Fatalf("%v.RouteChat(_) = _, %v", client, err)
+            return 3
         }
         waitc := make(chan struct{})
         go func() {
@@ -47,10 +50,13 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) {
                 in, err := stream.Recv()
                 if err == io.EOF {
                         close(waitc)
-                        return
+                        time.Sleep(3 * time.Second)
+                        continue
                 }
                 if err != nil {
-                        log.Fatalf("Failed to receive a note : %v", err)
+                        fmt.Println("Failed to receive a note : %v", err)
+                        ret = 1
+                        return
                 }
                 //fmt.Printf("Got message %d %s %s %s\n", in.Taskid , in.Name, in.Extra, in.Type)
 
@@ -87,36 +93,42 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) {
                        log.Fatalf("Failed to send a note: %v", err)
                     }
                 }
-              
+
                 taskType = ""
             }
         }()
 
         //var messageFail = pb.TaskStatus{Taskid: -1, Status:"Failure"}
-        var messageSucc = pb.K8SMessage{Taskid:  1, Status:"StartSuccess", Datacenter:"datacenter_2"}
-        if err := stream.Send(&messageSucc); err != nil {
-            log.Fatalf("Failed to send a note: %v", err)
-        }
+        for {
+            var messageSucc = pb.K8SMessage{Datacenter:"datacenter_2", Type:"HeartBeat", Report:ankr_list_task(clientset)}
+            if err := stream.Send(&messageSucc); err != nil {
+                fmt.Println("Failed to send a note: %v", err)
+                ret = 2
+                return ret
+            } else {
+                fmt.Printf("Send message to Hub, %s \n", messageSucc.Type)
+            }
 
-        fmt.Printf("send TaskStatus  message %d %s \n", messageSucc.Taskid , messageSucc.Status)
+            time.Sleep(5 * time.Second)
+        }
 
         //stream.CloseSend()
         <-waitc
+
+        return  0
 }
 
 
-func querytask(clientset *kubernetes.Clientset) {
+func querytask(clientset *kubernetes.Clientset) int{
 	conn, err := gogrpc.Dial(address, gogrpc.WithInsecure())
 	if err != nil {
-	    log.Fatalf("did not connect: %v", err)
+	    //log.Fatalf("did not connect: %v", err)
+            return 1
 	}
 	defer conn.Close()
 	c := pb.NewDccncliClient(conn)
 
-        for  {
-            sendTaskStatus(c, clientset)
-        }
-
+        return sendTaskStatus(c, clientset)
 /*synchronous one time call*/
 /*
 	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second )
@@ -165,14 +177,14 @@ func ankr_delete_task(clientset *kubernetes.Clientset) bool {
 
         return true
 }
-func ankr_list_task(clientset *kubernetes.Clientset) bool {
+func ankr_list_task(clientset *kubernetes.Clientset) string {
+        result  := ""
 	deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 
-	fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
+	//fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
 		panic(err)
-                return false
 	}
 
 	for _, d := range list.Items {
@@ -180,16 +192,19 @@ func ankr_list_task(clientset *kubernetes.Clientset) bool {
                 if err == nil {
                     //fmt.Printf("status.AvailableReplicas:%s\n", d.Status.AvailableReplicas)
                     //fmt.Printf("revision:%s\n", d.Revision)
-                    fmt.Printf("image:%s\n", d.Spec.Template.Spec.Containers[0].Image)
+                    //fmt.Printf("image:%s\n", d.Spec.Template.Spec.Containers[0].Image)
                     //fmt.Printf("NodeName:%s\n", d.Spec.Template.Spec.NodeName)
                     //fmt.Printf("Hostname:%s\n", d.Spec.Template.Spec.Hostname)
                     //fmt.Printf("containers:%s\n", d.Spec.Template.Spec.Containers[0])
                     //fmt.Printf("%s\n", cc)
                 }
-		fmt.Printf("task name: %s (%d replicas running)\n\n", d.Name, *d.Spec.Replicas)
+		fmt.Printf("task name: %s, image:%s (%d replicas running)\n\n", d.Name, 
+                        d.Spec.Template.Spec.Containers[0].Image, *d.Spec.Replicas)
+                result += "Task:" + string(d.Name) + "," + "Image:" + d.Spec.Template.Spec.Containers[0].Image + 
+                        "Replicas:" + strconv.Itoa(int(*d.Spec.Replicas)) + "\n"
 	}
 
-        return true
+        return result
 }
 
 func ankr_create_task(clientset *kubernetes.Clientset) bool {
@@ -275,6 +290,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+        fmt.Println(config.Host)
+
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		panic(err)
@@ -283,11 +301,24 @@ func main() {
         switch taskType {
             case CREATE_TASK:
                 ankr_create_task(clientset)
+                return
             case LIST_TASK:
-                ankr_list_task(clientset)
+                fmt.Printf("%s", ankr_list_task(clientset))
+                return
             case DELETE_TASK:
                 ankr_delete_task(clientset)
+                return
         }
 
-        querytask(clientset)
+        for { 
+            ret := querytask(clientset)
+            if ret != 0 {
+                time.Sleep(3 * time.Second)
+                fmt.Println("Reconnect.")
+                continue
+            } else {
+                fmt.Println("Bye.")
+                break
+            }
+        }
 }
