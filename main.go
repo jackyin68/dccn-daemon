@@ -32,6 +32,8 @@ const (
 	address  = "10.0.0.61:50051"
 )
 
+var addressCLI = ""
+
 
 // runRouteChat receives a sequence of route notes, while sending notes for various locations.
 func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) int{
@@ -120,7 +122,11 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
 
 
 func querytask(clientset *kubernetes.Clientset) int{
-	conn, err := gogrpc.Dial(address, gogrpc.WithInsecure())
+        var hubAddress string = addressCLI
+        if len(hubAddress) == 0 {
+            hubAddress = address
+        }
+	conn, err := gogrpc.Dial(hubAddress, gogrpc.WithInsecure())
 	if err != nil {
 	    //log.Fatalf("did not connect: %v", err)
             return 1
@@ -145,7 +151,12 @@ func querytask(clientset *kubernetes.Clientset) int{
 }
 
 func sendreport() {
-	conn, err := gogrpc.Dial(address, gogrpc.WithInsecure())
+        var hubAddress string = addressCLI
+        if len(hubAddress) == 0 {
+            hubAddress = address
+        }
+
+	conn, err := gogrpc.Dial(hubAddress, gogrpc.WithInsecure())
 	if err != nil {
 	    log.Fatalf("did not connect: %v", err)
 	}
@@ -184,6 +195,7 @@ func ankr_list_task(clientset *kubernetes.Clientset) string {
 	//fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
+                fmt.Printf("Probabaly the kubenetes(minikube) not started.\n")
 		panic(err)
 	}
 
@@ -262,9 +274,14 @@ func int32Ptr(i int32) *int32 { return &i }
 
 func main() {
         var taskType string
+        var ipCLI string
+        var portCLI string
         pboolCreate := flag.Bool("create", false, "create task")
         pboolList := flag.Bool("list", false, "list task")
         pboolDelete := flag.Bool("delete", false, "delete task")
+
+        flag.StringVar(&ipCLI, "ip", "", "ankr hub ip address")
+        flag.StringVar(&portCLI, "port", "", "ankr hub port number")
 
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
@@ -275,6 +292,12 @@ func main() {
 	}
 
 	flag.Parse()
+
+        if len(ipCLI) != 0 && len(portCLI) != 0 {
+            // TODO: verify ip and port input
+            addressCLI = ipCLI + ":" + portCLI
+            fmt.Println(addressCLI)
+        }
 
         if *pboolCreate {
             taskType = CREATE_TASK
