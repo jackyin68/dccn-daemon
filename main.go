@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/client-go/util/retry"
 
 	"log"
 	"time"
@@ -26,10 +27,12 @@ const (
         CREATE_TASK = "create a task"
         LIST_TASK = "list a task"
         DELETE_TASK = "delete a task"
+        UPDATE_REPLICA = "update replica"
 )
 
 const (
-	address  = "10.0.0.61:50051"
+        ADDRESS  = "10.0.0.61:50051"
+        MAX_REPLICA = 20
 )
 
 var addressCLI = ""
@@ -60,20 +63,21 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                         ret = 1
                         return
                 }
-                //fmt.Printf("Got message %d %s %s %s\n", in.Taskid , in.Name, in.Extra, in.Type)
 
                 if in.Type == "HeartBeat" {
                     fmt.Printf("Heartbeat!\n")
                 } else  {
                     fmt.Printf("Got message %d %s %s %s\n", in.Taskid , in.Name, in.Extra, in.Type)
-                }
 
-                if in.Type == "NewTask" {
-                    taskType = CREATE_TASK
-                }
-
-                if in.Type == "CancelTask" {
-                    taskType = DELETE_TASK
+                    if in.Type == "NewTask" {
+                        taskType = CREATE_TASK
+                    } else if in.Type == "CancelTask" {
+                        taskType = DELETE_TASK
+                    } else if in.Type == "UpdateReplica" {
+                        taskType = UPDATE_REPLICA
+                    } else {
+                        fmt.Println("Unknown task type:", in.Type)
+                    }
                 }
 
                 if taskType == CREATE_TASK {
@@ -94,6 +98,10 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                     if err := stream.Send(&messageSucc); err != nil {
                        log.Fatalf("Failed to send a note: %v", err)
                     }
+                }
+
+                if taskType == UPDATE_REPLICA {
+                    fmt.Printf("updating the replica")
                 }
 
                 taskType = ""
@@ -124,8 +132,9 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
 func querytask(clientset *kubernetes.Clientset) int{
         var hubAddress string = addressCLI
         if len(hubAddress) == 0 {
-            hubAddress = address
+            hubAddress = ADDRESS
         }
+
 	conn, err := gogrpc.Dial(hubAddress, gogrpc.WithInsecure())
 	if err != nil {
 	    //log.Fatalf("did not connect: %v", err)
@@ -153,7 +162,7 @@ func querytask(clientset *kubernetes.Clientset) int{
 func sendreport() {
         var hubAddress string = addressCLI
         if len(hubAddress) == 0 {
-            hubAddress = address
+            hubAddress = ADDRESS
         }
 
 	conn, err := gogrpc.Dial(hubAddress, gogrpc.WithInsecure())
@@ -188,6 +197,29 @@ func ankr_delete_task(clientset *kubernetes.Clientset) bool {
 
         return true
 }
+
+
+func ankr_update_task(clientset *kubernetes.Clientset, num int32) bool {
+        deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
+        retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
+		result, getErr := deploymentsClient.Get("demo-deployment", metav1.GetOptions{})
+		if getErr != nil {
+			panic(fmt.Errorf("Failed to get latest version of Deployment: %v", getErr))
+		}
+
+		result.Spec.Replicas = int32Ptr(num)
+		//result.Spec.Template.Spec.Containers[0].Image = "nginx:1.13" // change nginx version
+		_, updateErr := deploymentsClient.Update(result)
+		return updateErr
+	})
+	if retryErr != nil {
+		panic(fmt.Errorf("Update failed: %v", retryErr))
+	}
+
+        return true
+}
+
 func ankr_list_task(clientset *kubernetes.Clientset) string {
         result  := ""
 	deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
@@ -282,6 +314,7 @@ func main() {
 
         flag.StringVar(&ipCLI, "ip", "", "ankr hub ip address")
         flag.StringVar(&portCLI, "port", "", "ankr hub port number")
+        updateNumPtr := flag.Int("update", 0, "replica number")
 
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
@@ -305,7 +338,17 @@ func main() {
             taskType = LIST_TASK
         } else if *pboolDelete {
             taskType = DELETE_TASK
+        } else if *updateNumPtr != 0 {
+            taskType = UPDATE_REPLICA
         }
+
+        if *updateNumPtr < 0 {
+            fmt.Printf("invalid replica number:%d\n", *updateNumPtr)
+            return
+        } else if *updateNumPtr > MAX_REPLICA {
+            fmt.Printf("replica number %d it too big. Maximum is %d.\n", *updateNumPtr, MAX_REPLICA)
+            return
+        } 
 
         fmt.Println(taskType)
 
@@ -330,6 +373,10 @@ func main() {
                 return
             case DELETE_TASK:
                 ankr_delete_task(clientset)
+                return
+            case UPDATE_REPLICA:
+                fmt.Printf("update to %d replica\n", *updateNumPtr)
+                ankr_update_task(clientset, int32(*updateNumPtr))
                 return
         }
 
