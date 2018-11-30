@@ -20,7 +20,7 @@ import (
 	"time"
 	"golang.org/x/net/context"
 	gogrpc "google.golang.org/grpc"
-	pb "dccn_hub/protocol"
+	pb "dccn-hub/protocol"
 )
 
 const (
@@ -67,7 +67,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                 if in.Type == "HeartBeat" {
                     fmt.Printf("Heartbeat!\n")
                 } else  {
-                    fmt.Printf("Got message %d %s %s %s\n", in.Taskid , in.Name, in.Extra, in.Type)
+                    fmt.Printf("Got message %d %s %s %s %s\n", in.Taskid, in.Name, in.Image, in.Extra, in.Type)
 
                     if in.Type == "NewTask" {
                         taskType = CREATE_TASK
@@ -82,7 +82,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
 
                 if taskType == CREATE_TASK {
                     fmt.Printf("starting the task\n")
-                    ankr_create_task(clientset)
+                    ankr_create_task(clientset, in.Name, in.Image)
                     fmt.Printf("finish starting the task\n")
                     var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Status:"StartSuccess", Datacenter:"datacenter_2"}
                     if err := stream.Send(&messageSucc); err != nil {
@@ -92,7 +92,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
 
                 if taskType == DELETE_TASK {
                     fmt.Printf("canceling the task")
-                    ankr_delete_task(clientset)
+                    ankr_delete_task(clientset, in.Name)
                     fmt.Printf("finish canceling the task")
                     var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Status:"Cancelled", Datacenter:"datacenter_2"}
                     if err := stream.Send(&messageSucc); err != nil {
@@ -119,7 +119,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                 fmt.Printf("Send message to Hub, %s \n", messageSucc.Type)
             }
 
-            time.Sleep(5 * time.Second)
+            time.Sleep(30 * time.Second)
         }
 
         //stream.CloseSend()
@@ -183,12 +183,12 @@ func sendreport() {
 	fmt.Printf("received Status : %s \n", r.Status)
 }
 
-func ankr_delete_task(clientset *kubernetes.Clientset) bool {
+func ankr_delete_task(clientset *kubernetes.Clientset, dockerName string) bool {
 	deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 
 	fmt.Println("Deleting deployment...")
 	deletePolicy := metav1.DeletePropagationForeground
-	if err := deploymentsClient.Delete("demo-deployment", &metav1.DeleteOptions{
+	if err := deploymentsClient.Delete(dockerName, &metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	}); err != nil {
 		//panic(err)
@@ -251,31 +251,37 @@ func ankr_list_task(clientset *kubernetes.Clientset) string {
         return result
 }
 
-func ankr_create_task(clientset *kubernetes.Clientset) bool {
+func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, dockerImage string) bool {
 	deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "demo-deployment",
+			Name: string (
+                              dockerName,
+                        ),
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(2),
+			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "demo",
+					"app": "ankr",
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "demo",
+						"app": "ankr",
 					},
 				},
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:  "web",
-							Image: "nginx:1.12",
+							Name:  string (
+                                                               dockerName,
+                                                        ),
+							Image: string (
+                                                               dockerImage,
+                                                        ),
 							Ports: []apiv1.ContainerPort{
 								{
 									Name:          "http",
@@ -294,7 +300,7 @@ func ankr_create_task(clientset *kubernetes.Clientset) bool {
 	result, err := deploymentsClient.Create(deployment)
 	if err != nil {
 		//panic(err)  //probably already exist
-                fmt.Println("probably already exist.\n")
+                fmt.Println("probably already exist:.\n", err)
                 return false
 	}
 	fmt.Printf("Created deployment %q.\n", result.GetObjectMeta().GetName())
@@ -366,13 +372,13 @@ func main() {
 
         switch taskType {
             case CREATE_TASK:
-                ankr_create_task(clientset)
+                ankr_create_task(clientset, "demo-deployment", "nginx:1.12")
                 return
             case LIST_TASK:
                 fmt.Printf("%s", ankr_list_task(clientset))
                 return
             case DELETE_TASK:
-                ankr_delete_task(clientset)
+                ankr_delete_task(clientset, "demo-deployment")
                 return
             case UPDATE_REPLICA:
                 fmt.Printf("update to %d replica\n", *updateNumPtr)
