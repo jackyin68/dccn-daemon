@@ -36,6 +36,7 @@ const (
 )
 
 var addressCLI = ""
+var dcNameCLI = ""
 
 
 // runRouteChat receives a sequence of route notes, while sending notes for various locations.
@@ -84,7 +85,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                     fmt.Printf("starting the task\n")
                     ankr_create_task(clientset, in.Name, in.Image)
                     fmt.Printf("finish starting the task\n")
-                    var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Status:"StartSuccess", Datacenter:"datacenter_2"}
+                    var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartSuccess", Datacenter:dcNameCLI}
                     if err := stream.Send(&messageSucc); err != nil {
                        log.Fatalf("Failed to send a note: %v", err)
                     }
@@ -94,7 +95,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                     fmt.Printf("canceling the task")
                     ankr_delete_task(clientset, in.Name)
                     fmt.Printf("finish canceling the task")
-                    var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Status:"Cancelled", Datacenter:"datacenter_2"}
+                    var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"Cancelled", Datacenter:dcNameCLI}
                     if err := stream.Send(&messageSucc); err != nil {
                        log.Fatalf("Failed to send a note: %v", err)
                     }
@@ -110,7 +111,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
 
         //var messageFail = pb.TaskStatus{Taskid: -1, Status:"Failure"}
         for {
-            var messageSucc = pb.K8SMessage{Datacenter:"datacenter_2", Type:"HeartBeat", Report:ankr_list_task(clientset)}
+            var messageSucc = pb.K8SMessage{Datacenter:dcNameCLI, Taskname:"", Type:"HeartBeat", Report:ankr_list_task(clientset)}
             if err := stream.Send(&messageSucc); err != nil {
                 fmt.Println("Failed to send a note: %v", err)
                 ret = 2
@@ -174,7 +175,7 @@ func sendreport() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second )
 	defer cancel()
-	r, err := c.K8ReportStatus(ctx, &pb.ReportRequest{Name:"datacenter_2",Report:"job2 job2 job3 host 100", Host:"127.0.0.67", Port:5009 })
+	r, err := c.K8ReportStatus(ctx, &pb.ReportRequest{Name:dcNameCLI,Report:"job2 job2 job3 host 100", Host:"127.0.0.67", Port:5009 })
 	if err != nil {
             fmt.Printf("Fail to connect to server. Error:\n") 
 	    log.Fatalf("Client: could not send: %v", err)
@@ -320,6 +321,7 @@ func main() {
 
         flag.StringVar(&ipCLI, "ip", "", "ankr hub ip address")
         flag.StringVar(&portCLI, "port", "", "ankr hub port number")
+        flag.StringVar(&dcNameCLI, "dcName", "", "data center name")
         updateNumPtr := flag.Int("update", 0, "replica number")
 
 	var kubeconfig *string
@@ -332,6 +334,9 @@ func main() {
 
 	flag.Parse()
 
+        if len(dcNameCLI) == 0 {
+            dcNameCLI = "datacenter_2"
+        }
         if len(ipCLI) != 0 && len(portCLI) != 0 {
             // TODO: verify ip and port input
             addressCLI = ipCLI + ":" + portCLI

@@ -1,5 +1,50 @@
 # Set up CI/CD for Ankr daemon
 
+## Functionalities in the first version, 
+
+talk to cluster master
+
+finish the self-registration when boot up.
+
+add a task
+
+list tasks
+
+delete a task
+
+## Usage
+./ankr-daemon
+  -create
+    	create taska (for test)
+  -delete
+    	delete task (for test)
+  -ip string
+    	ankr hub ip address
+  -kubeconfig string
+    	(optional) absolute path to the kubeconfig file (default "/home/boinc/.kube/config")
+  -list
+    	list task (for test)
+  -port string
+    	ankr hub port number
+  -dcName string
+    	data center name
+
+Example:
+./ankr-daemon --ip 1.1.1.1 --port 5678 
+
+## Installation
+
+1. install kubenetes first.
+
+2. clone this repository.
+
+3. use "go run main.go" to test if you have all libraries, and then use "go get" to get all the libraries.
+
+4. use "go run main.go --ip 1.1.1.1 --port 5678" to run the daemon.
+
+5. will use installer or docker to install later.
+
+
 ## Objective
 
 Set up CI/CD pipeline for Ankr daemon using CircleCI, so each commit pushed to GitHub will create the Docker image for the daemon, and push it to the AWS ECR registry.
