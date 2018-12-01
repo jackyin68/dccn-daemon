@@ -44,7 +44,9 @@ delete a task
     	data center name
 
 Example:
+go build -o ankr-daemon .
 ./ankr-daemon --ip 1.1.1.1 --port 5678 
+./ankr-daemon --ip hub.ankr.network --port 5678 --dcName mydcname
 
 ## Installation
 
@@ -54,7 +56,7 @@ Example:
 
 3. use "go run main.go" to test if you have all libraries, and then use "go get" to get all the libraries.
 
-4. use "go run main.go --ip 1.1.1.1 --port 5678" to run the daemon.
+4. use "go run main.go --ip 1.1.1.1 --port 5678" to run the daemon. or "go build -o ankr-daemon ."
 
 5. will use installer or docker to install later.
 
