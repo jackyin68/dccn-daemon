@@ -58,6 +58,10 @@ Example:
 
 5. will use installer or docker to install later.
 
+Note: there are different ways to install kubernetes, most of time the config is already there. But in some case, you need to generate the config file yourself, like below.
+
+microk8s.kubectl config view --raw > $HOME/.kube/config
+
 
 ## Objective
 
