@@ -83,21 +83,37 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
 
                 if taskType == CREATE_TASK {
                     fmt.Printf("starting the task\n")
-                    ankr_create_task(clientset, in.Name, in.Image)
-                    fmt.Printf("finish starting the task\n")
-                    var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartSuccess", Datacenter:dcNameCLI}
-                    if err := stream.Send(&messageSucc); err != nil {
-                       log.Fatalf("Failed to send a note: %v", err)
+                    ret := ankr_create_task(clientset, in.Name, in.Image)
+                    if !ret {
+                        fmt.Printf("fail to start the task\n")
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartFailure", Datacenter:dcNameCLI}
+                        if err := stream.Send(&messageSucc); err != nil {
+                            log.Fatalf("Failed to send a note: %v", err)
+                        }
+                    } else {
+                        fmt.Printf("finish starting the task\n")
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartSuccess", Datacenter:dcNameCLI}
+                        if err := stream.Send(&messageSucc); err != nil {
+                            log.Fatalf("Failed to send a note: %v", err)
+                        }
                     }
                 }
 
                 if taskType == DELETE_TASK {
                     fmt.Printf("canceling the task")
-                    ankr_delete_task(clientset, in.Name)
-                    fmt.Printf("finish canceling the task")
-                    var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"Cancelled", Datacenter:dcNameCLI}
-                    if err := stream.Send(&messageSucc); err != nil {
-                       log.Fatalf("Failed to send a note: %v", err)
+                    ret := ankr_delete_task(clientset, in.Name)
+                    if !ret {
+                        fmt.Printf("fail to cancel the task")
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"CancelFailure", Datacenter:dcNameCLI}
+                        if err := stream.Send(&messageSucc); err != nil {
+                            log.Fatalf("Failed to send a note: %v", err)
+                        }
+                    } else {
+                        fmt.Printf("finish canceling the task")
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"Cancelled", Datacenter:dcNameCLI}
+                        if err := stream.Send(&messageSucc); err != nil {
+                            log.Fatalf("Failed to send a note: %v", err)
+                        }
                     }
                 }
 
