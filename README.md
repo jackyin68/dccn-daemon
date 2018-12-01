@@ -14,19 +14,33 @@ delete a task
 
 ## Usage
 ./ankr-daemon
+
   -create
+
     	create taska (for test)
+
   -delete
+
     	delete task (for test)
+
   -ip string
+
     	ankr hub ip address
+
   -kubeconfig string
+
     	(optional) absolute path to the kubeconfig file (default "/home/boinc/.kube/config")
+
   -list
+
     	list task (for test)
+
   -port string
+
     	ankr hub port number
+
   -dcName string
+
     	data center name
 
 Example:
