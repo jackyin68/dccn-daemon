@@ -37,6 +37,7 @@ const (
 
 var addressCLI = ""
 var dcNameCLI = ""
+var totalPodNum =  0
 
 
 // runRouteChat receives a sequence of route notes, while sending notes for various locations.
@@ -84,17 +85,41 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                 if taskType == CREATE_TASK {
                     fmt.Printf("starting the task\n")
                     ret := ankr_create_task(clientset, in.Name, in.Image)
-                    if !ret {
-                        fmt.Printf("fail to start the task\n")
-                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartFailure", Datacenter:dcNameCLI}
-                        if err := stream.Send(&messageSucc); err != nil {
-                            log.Fatalf("Failed to send a note: %v", err)
+                    if ret {
+                        podNumNew := 0
+                        podsClient, err := clientset.CoreV1().Pods(apiv1.NamespaceDefault).List(metav1.ListOptions{})
+                        if err != nil {
+                            return
                         }
-                    } else {
+
+                        for _, pod := range podsClient.Items {
+                            if pod.Status.Phase != "Running" && !pod.Status.ContainerStatuses[0].Ready  {
+                                fmt.Println(pod.Name, " not running.")
+                                continue
+                            }
+                            podNumNew += 1
+                        }
+
+                        fmt.Printf("total tasks %d; after creating total tasks %d\n", totalPodNum, podNumNew)
+                        if  totalPodNum >= podNumNew {
+                            fmt.Println("remove the failed task.")
+                            ankr_delete_task(clientset, in.Name)
+                            return
+                        } else {
+                            totalPodNum = podNumNew
+                        }
+
                         fmt.Printf("finish starting the task\n")
                         var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartSuccess", Datacenter:dcNameCLI}
                         if err := stream.Send(&messageSucc); err != nil {
-                            log.Fatalf("Failed to send a note: %v", err)
+                            fmt.Printf("Failed to send a note: %v\n", err)
+                        }
+
+                    } else {
+                        fmt.Printf("fail to start the task\n")
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartFailure", Datacenter:dcNameCLI}
+                        if err := stream.Send(&messageSucc); err != nil {
+                            fmt.Printf("Failed to send a note: %v\n", err)
                         }
                     }
                 }
@@ -106,13 +131,13 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                         fmt.Printf("fail to cancel the task")
                         var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"CancelFailure", Datacenter:dcNameCLI}
                         if err := stream.Send(&messageSucc); err != nil {
-                            log.Fatalf("Failed to send a note: %v", err)
+                            fmt.Printf("Failed to send a note: %v\n", err)
                         }
                     } else {
                         fmt.Printf("finish canceling the task")
                         var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"Cancelled", Datacenter:dcNameCLI}
                         if err := stream.Send(&messageSucc); err != nil {
-                            log.Fatalf("Failed to send a note: %v", err)
+                            fmt.Printf("Failed to send a note: %v\n", err)
                         }
                     }
                 }
@@ -240,6 +265,19 @@ func ankr_update_task(clientset *kubernetes.Clientset, num int32) bool {
 func ankr_list_task(clientset *kubernetes.Clientset) string {
         result  := ""
 	deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
+        podsClient, err := clientset.CoreV1().Pods(apiv1.NamespaceDefault).List(metav1.ListOptions{})
+        if err != nil {
+            return ""
+        }
+
+        for _, pod := range podsClient.Items {
+            if pod.Status.Phase != "Running" && !pod.Status.ContainerStatuses[0].Ready  {
+                fmt.Println(pod.Name, " not running.")
+            }
+	    //fmt.Println(pod.Name, ":", pod.Status.PodIP, ":", pod.Status.Phase, ":", pod.Status.Conditions,
+                 //":", pod.Status.Message, ":", pod.Status.Reason, ":", pod.Status.HostIP, ":", pod.Status.StartTime, 
+                 //":", pod.Status.InitContainerStatuses, ":", pod.Status.ContainerStatuses[0].Ready)
+        }
 
 	//fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
@@ -314,13 +352,25 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
 	}
 
 	fmt.Println("Creating deployment...")
+
+        podsClient, err := clientset.CoreV1().Pods(apiv1.NamespaceDefault).List(metav1.ListOptions{})
+        if err != nil {
+            return false
+        }
+
+        totalPodNum = 0
+        for _, pod := range podsClient.Items {
+            totalPodNum += 1
+            fmt.Println(pod.Name, pod.Status.PodIP)
+        }
+
 	result, err := deploymentsClient.Create(deployment)
 	if err != nil {
-		//panic(err)  //probably already exist
-                fmt.Println("probably already exist:.\n", err)
+                fmt.Println("probably already exist:.\n", err, result)
                 return false
 	}
-	fmt.Printf("Created deployment %q.\n", result.GetObjectMeta().GetName())
+
+        time.Sleep(2 * time.Second)
 
         return true
 }
