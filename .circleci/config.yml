@@ -12,6 +12,10 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
+          name: copy ssh key
+          command: |
+            cp ${HOME}/.ssh/id_rsa id_rsa
+      - run:
           name: Install AWSCLI
           command: |
             curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
@@ -25,6 +29,6 @@ jobs:
       - run:
           name: "Build & Push Docker Image"
           command: |
-            docker build -t hello-go .
-            docker tag hello-go:latest 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:hello-go
-            docker push 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:hello-go
+            docker build -t dccn_daemon .
+            docker tag dccn_daemon:latest 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:dccn_daemon
+            docker push 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:dccn_daemon

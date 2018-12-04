@@ -20,7 +20,7 @@ import (
 	"time"
 	"golang.org/x/net/context"
 	gogrpc "google.golang.org/grpc"
-	pb "dccn-rpc/protocol"
+	pb "github.com/Ankr-network/dccn-rpc/protocol"
 )
 
 const (
