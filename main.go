@@ -6,6 +6,8 @@ import (
 	"io"
 	"fmt"
 	"strconv"
+	"log"
+	"time"
 	"path/filepath"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -14,10 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"k8s.io/client-go/util/retry"
-
-	"log"
-	"time"
+	//"k8s.io/client-go/util/retry"
 	"golang.org/x/net/context"
 	gogrpc "google.golang.org/grpc"
 	pb "github.com/Ankr-network/dccn-rpc/protocol"
@@ -35,9 +34,9 @@ const (
         MAX_REPLICA = 20
 )
 
-var addressCLI = ""
-var dcNameCLI = ""
-var totalPodNum =  0
+var gAddressCLI = ""
+var gDcNameCLI = ""
+var gTotalPodNum =  0
 
 
 // runRouteChat receives a sequence of route notes, while sending notes for various locations.
@@ -48,7 +47,6 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
         defer cancel()
         stream, err := client.K8Task(ctx)
         if err != nil {
-            //log.Fatalf("%v.RouteChat(_) = _, %v", client, err)
             return 3
         }
         waitc := make(chan struct{})
@@ -100,24 +98,24 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                             podNumNew += 1
                         }
 
-                        fmt.Printf("total tasks %d; after creating total tasks %d\n", totalPodNum, podNumNew)
-                        if  totalPodNum >= podNumNew {
+                        fmt.Printf("total tasks %d; after creating total tasks %d\n", gTotalPodNum, podNumNew)
+                        if  gTotalPodNum >= podNumNew {
                             fmt.Println("remove the failed task.")
                             ankr_delete_task(clientset, in.Name)
                             return
                         } else {
-                            totalPodNum = podNumNew
+                            gTotalPodNum = podNumNew
                         }
 
                         fmt.Printf("finish starting the task\n")
-                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartSuccess", Datacenter:dcNameCLI}
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartSuccess", Datacenter:gDcNameCLI}
                         if err := stream.Send(&messageSucc); err != nil {
                             fmt.Printf("Failed to send a note: %v\n", err)
                         }
 
                     } else {
                         fmt.Printf("fail to start the task\n")
-                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartFailure", Datacenter:dcNameCLI}
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartFailure", Datacenter:gDcNameCLI}
                         if err := stream.Send(&messageSucc); err != nil {
                             fmt.Printf("Failed to send a note: %v\n", err)
                         }
@@ -129,13 +127,13 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                     ret := ankr_delete_task(clientset, in.Name)
                     if !ret {
                         fmt.Printf("fail to cancel the task")
-                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"CancelFailure", Datacenter:dcNameCLI}
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"CancelFailure", Datacenter:gDcNameCLI}
                         if err := stream.Send(&messageSucc); err != nil {
                             fmt.Printf("Failed to send a note: %v\n", err)
                         }
                     } else {
                         fmt.Printf("finish canceling the task")
-                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"Cancelled", Datacenter:dcNameCLI}
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"Cancelled", Datacenter:gDcNameCLI}
                         if err := stream.Send(&messageSucc); err != nil {
                             fmt.Printf("Failed to send a note: %v\n", err)
                         }
@@ -150,9 +148,8 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
             }
         }()
 
-        //var messageFail = pb.TaskStatus{Taskid: -1, Status:"Failure"}
         for {
-            var messageSucc = pb.K8SMessage{Datacenter:dcNameCLI, Taskname:"", Type:"HeartBeat", Report:ankr_list_task(clientset)}
+            var messageSucc = pb.K8SMessage{Datacenter:gDcNameCLI, Taskname:"", Type:"HeartBeat", Report:ankr_list_task(clientset)}
             if err := stream.Send(&messageSucc); err != nil {
                 fmt.Println("Failed to send a note: %v", err)
                 ret = 2
@@ -164,7 +161,6 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
             time.Sleep(30 * time.Second)
         }
 
-        //stream.CloseSend()
         <-waitc
 
         return  0
@@ -172,7 +168,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
 
 
 func querytask(clientset *kubernetes.Clientset) int{
-        var hubAddress string = addressCLI
+        var hubAddress string = gAddressCLI
         if len(hubAddress) == 0 {
             hubAddress = ADDRESS
         }
@@ -202,7 +198,7 @@ func querytask(clientset *kubernetes.Clientset) int{
 }
 
 func sendreport() {
-        var hubAddress string = addressCLI
+        var hubAddress string = gAddressCLI
         if len(hubAddress) == 0 {
             hubAddress = ADDRESS
         }
@@ -216,7 +212,7 @@ func sendreport() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second )
 	defer cancel()
-	r, err := c.K8ReportStatus(ctx, &pb.ReportRequest{Name:dcNameCLI,Report:"job2 job2 job3 host 100", Host:"127.0.0.67", Port:5009 })
+	r, err := c.K8ReportStatus(ctx, &pb.ReportRequest{Name:gDcNameCLI,Report:"job2 job2 job3 host 100", Host:"127.0.0.67", Port:5009 })
 	if err != nil {
             fmt.Printf("Fail to connect to server. Error:\n") 
 	    log.Fatalf("Client: could not send: %v", err)
@@ -233,14 +229,13 @@ func ankr_delete_task(clientset *kubernetes.Clientset, dockerName string) bool {
 	if err := deploymentsClient.Delete(dockerName, &metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	}); err != nil {
-		//panic(err)
                 return false
 	}
 
         return true
 }
 
-
+/*
 func ankr_update_task(clientset *kubernetes.Clientset, num int32) bool {
         deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
         retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -261,6 +256,7 @@ func ankr_update_task(clientset *kubernetes.Clientset, num int32) bool {
 
         return true
 }
+*/
 
 func ankr_list_task(clientset *kubernetes.Clientset) string {
         result  := ""
@@ -283,7 +279,7 @@ func ankr_list_task(clientset *kubernetes.Clientset) string {
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
                 fmt.Printf("Probabaly the kubenetes(minikube) not started.\n")
-		panic(err)
+                return ""
 	}
 
 	for _, d := range list.Items {
@@ -358,9 +354,9 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
             return false
         }
 
-        totalPodNum = 0
+        gTotalPodNum = 0
         for _, pod := range podsClient.Items {
-            totalPodNum += 1
+            gTotalPodNum += 1
             fmt.Println(pod.Name, pod.Status.PodIP)
         }
 
@@ -387,8 +383,8 @@ func main() {
 
         flag.StringVar(&ipCLI, "ip", "", "ankr hub ip address")
         flag.StringVar(&portCLI, "port", "", "ankr hub port number")
-        flag.StringVar(&dcNameCLI, "dcName", "", "data center name")
-        updateNumPtr := flag.Int("update", 0, "replica number")
+        flag.StringVar(&gDcNameCLI, "dcName", "", "data center name")
+        //updateNumPtr := flag.Int("update", 0, "replica number")
 
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
@@ -400,13 +396,13 @@ func main() {
 
 	flag.Parse()
 
-        if len(dcNameCLI) == 0 {
-            dcNameCLI = "datacenter_2"
+        if len(gDcNameCLI) == 0 {
+            gDcNameCLI = "datacenter_2"
         }
         if len(ipCLI) != 0 && len(portCLI) != 0 {
             // TODO: verify ip and port input
-            addressCLI = ipCLI + ":" + portCLI
-            fmt.Println(addressCLI)
+            gAddressCLI = ipCLI + ":" + portCLI
+            fmt.Println(gAddressCLI)
         }
 
         if *pboolCreate {
@@ -415,17 +411,17 @@ func main() {
             taskType = LIST_TASK
         } else if *pboolDelete {
             taskType = DELETE_TASK
-        } else if *updateNumPtr != 0 {
-            taskType = UPDATE_REPLICA
+        //} else if *updateNumPtr != 0 {
+        //    taskType = UPDATE_REPLICA
         }
 
-        if *updateNumPtr < 0 {
-            fmt.Printf("invalid replica number:%d\n", *updateNumPtr)
-            return
-        } else if *updateNumPtr > MAX_REPLICA {
-            fmt.Printf("replica number %d it too big. Maximum is %d.\n", *updateNumPtr, MAX_REPLICA)
-            return
-        } 
+        //if *updateNumPtr < 0 {
+        //    fmt.Printf("invalid replica number:%d\n", *updateNumPtr)
+        //    return
+        //} else if *updateNumPtr > MAX_REPLICA {
+        //    fmt.Printf("replica number %d it too big. Maximum is %d.\n", *updateNumPtr, MAX_REPLICA)
+        //    return
+        //} 
 
         fmt.Println(taskType)
 
@@ -451,10 +447,10 @@ func main() {
             case DELETE_TASK:
                 ankr_delete_task(clientset, "demo-deployment")
                 return
-            case UPDATE_REPLICA:
-                fmt.Printf("update to %d replica\n", *updateNumPtr)
-                ankr_update_task(clientset, int32(*updateNumPtr))
-                return
+            //case UPDATE_REPLICA:
+            //    fmt.Printf("update to %d replica\n", *updateNumPtr)
+            //    ankr_update_task(clientset, int32(*updateNumPtr))
+            //    return
         }
 
         for { 
