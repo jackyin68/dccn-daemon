@@ -16,7 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	//"k8s.io/client-go/util/retry"
+	"k8s.io/client-go/util/retry"
 	"golang.org/x/net/context"
 	gogrpc "google.golang.org/grpc"
 	pb "github.com/Ankr-network/dccn-rpc/protocol"
@@ -239,28 +239,39 @@ func ankr_delete_task(clientset *kubernetes.Clientset, dockerName string) bool {
         return true
 }
 
-/*
-func ankr_update_task(clientset *kubernetes.Clientset, num int32) bool {
+func ankr_update_task(clientset *kubernetes.Clientset, num int32, image string) bool {
+        if (num == 0) && (len(image) == 0) {
+            return false
+        }
+
         deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
         retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
 		result, getErr := deploymentsClient.Get("demo-deployment", metav1.GetOptions{})
 		if getErr != nil {
-			panic(fmt.Errorf("Failed to get latest version of Deployment: %v", getErr))
+                    fmt.Printf("Failed to get latest version of Deployment: %v\n", getErr)
+                    return getErr
 		}
-
-		result.Spec.Replicas = int32Ptr(num)
-		//result.Spec.Template.Spec.Containers[0].Image = "nginx:1.13" // change nginx version
+                if num != 0 {
+		    result.Spec.Replicas = int32Ptr(num)
+                }
+                if len(image) != 0 {
+		    result.Spec.Template.Spec.Containers[0].Image = image //"nginx:1.13"
+                }
 		_, updateErr := deploymentsClient.Update(result)
-		return updateErr
+                if updateErr != nil {
+                    fmt.Printf("Failed to update task: %v\n", updateErr)
+                }
+                return updateErr
 	})
+
 	if retryErr != nil {
-		panic(fmt.Errorf("Update failed: %v", retryErr))
+		fmt.Printf("Update failed: %v\n", retryErr)
+                return false
 	}
 
         return true
 }
-*/
 
 func ankr_list_task(clientset *kubernetes.Clientset) string {
         result  := ""
@@ -345,6 +356,21 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
 								},
 							},
 						},
+						{
+							Name:  string (
+                                                               "mongo",
+                                                        ),
+							Image: string (
+                                                               "mongo:3.1",
+                                                        ),
+							Ports: []apiv1.ContainerPort{
+								{
+									Name:          "http",
+									Protocol:      apiv1.ProtocolTCP,
+									ContainerPort: 27017,
+								},
+							},
+						},
 					},
 				},
 			},
@@ -388,7 +414,7 @@ func main() {
         flag.StringVar(&ipCLI, "ip", "", "ankr hub ip address")
         flag.StringVar(&portCLI, "port", "", "ankr hub port number")
         flag.StringVar(&gDcNameCLI, "dcName", "", "data center name")
-        //updateNumPtr := flag.Int("update", 0, "replica number")
+        updateNumPtr := flag.Int("update", 0, "replica number")
 
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
@@ -415,17 +441,17 @@ func main() {
             taskType = LIST_TASK
         } else if *pboolDelete {
             taskType = DELETE_TASK
-        //} else if *updateNumPtr != 0 {
-        //    taskType = UPDATE_REPLICA
+        } else if *updateNumPtr != 0 {
+            taskType = UPDATE_REPLICA
         }
 
-        //if *updateNumPtr < 0 {
-        //    fmt.Printf("invalid replica number:%d\n", *updateNumPtr)
-        //    return
-        //} else if *updateNumPtr > MAX_REPLICA {
-        //    fmt.Printf("replica number %d it too big. Maximum is %d.\n", *updateNumPtr, MAX_REPLICA)
-        //    return
-        //} 
+        if *updateNumPtr < 0 {
+            fmt.Printf("invalid replica number:%d\n", *updateNumPtr)
+            return
+        } else if *updateNumPtr > MAX_REPLICA {
+            fmt.Printf("replica number %d it too big. Maximum is %d.\n", *updateNumPtr, MAX_REPLICA)
+            return
+        } 
 
         fmt.Println(taskType)
 
@@ -451,10 +477,10 @@ func main() {
             case DELETE_TASK:
                 ankr_delete_task(clientset, "demo-deployment")
                 return
-            //case UPDATE_REPLICA:
-            //    fmt.Printf("update to %d replica\n", *updateNumPtr)
-            //    ankr_update_task(clientset, int32(*updateNumPtr))
-            //    return
+            case UPDATE_REPLICA:
+                fmt.Printf("update to %d replica\n", *updateNumPtr)
+                ankr_update_task(clientset, int32(*updateNumPtr), "nginx:1.13")
+                return
         }
 
         for { 
