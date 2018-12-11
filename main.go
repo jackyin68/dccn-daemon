@@ -26,7 +26,7 @@ const (
         CREATE_TASK = "create a task"
         LIST_TASK = "list a task"
         DELETE_TASK = "delete a task"
-        UPDATE_REPLICA = "update replica"
+        UPDATE_TASK = "update task"
 )
 
 const (
@@ -69,14 +69,14 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                 if in.Type == "HeartBeat" {
                     fmt.Printf("Heartbeat!\n")
                 } else  {
-                    fmt.Printf("Got message %d %s %s %s %s\n", in.Taskid, in.Name, in.Image, in.Extra, in.Type)
+                    fmt.Printf("Got message %d %d %s %s %s %s\n", in.Taskid, in.Replica, in.Name, in.Image, in.Extra, in.Type)
 
                     if in.Type == "NewTask" {
                         taskType = CREATE_TASK
                     } else if in.Type == "CancelTask" {
                         taskType = DELETE_TASK
-                    } else if in.Type == "UpdateReplica" {
-                        taskType = UPDATE_REPLICA
+                    } else if in.Type == "UpdateTask" {
+                        taskType = UPDATE_TASK
                     } else {
                         fmt.Println("Unknown task type:", in.Type)
                     }
@@ -144,8 +144,22 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                     }
                 }
 
-                if taskType == UPDATE_REPLICA {
-                    fmt.Printf("updating the replica")
+                if taskType == UPDATE_TASK {
+                    fmt.Printf("updating the replica/image")
+                    ret := ankr_update_task(clientset, int32(in.Replica), in.Name, in.Image)
+                    if !ret {
+                        fmt.Printf("fail to update the task")
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"UpdateFailure", Datacenter:gDcNameCLI}
+                        if err := stream.Send(&messageSucc); err != nil {
+                            fmt.Printf("Failed to send a note: %v\n", err)
+                        }
+                    } else {
+                        fmt.Printf("finish updating the task")
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"UpdateSuccess", Datacenter:gDcNameCLI}
+                        if err := stream.Send(&messageSucc); err != nil {
+                            fmt.Printf("Failed to send a note: %v\n", err)
+                        }
+                    }
                 }
 
                 taskType = ""
@@ -239,7 +253,7 @@ func ankr_delete_task(clientset *kubernetes.Clientset, dockerName string) bool {
         return true
 }
 
-func ankr_update_task(clientset *kubernetes.Clientset, num int32, image string) bool {
+func ankr_update_task(clientset *kubernetes.Clientset, num int32, taskname string, image string) bool {
         if (num == 0) && (len(image) == 0) {
             return false
         }
@@ -247,7 +261,7 @@ func ankr_update_task(clientset *kubernetes.Clientset, num int32, image string) 
         deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
         retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		// RetryOnConflict uses exponential backoff to avoid exhausting the apiserver
-		result, getErr := deploymentsClient.Get("demo-deployment", metav1.GetOptions{})
+		result, getErr := deploymentsClient.Get(taskname, metav1.GetOptions{})
 		if getErr != nil {
                     fmt.Printf("Failed to get latest version of Deployment: %v\n", getErr)
                     return getErr
@@ -276,19 +290,19 @@ func ankr_update_task(clientset *kubernetes.Clientset, num int32, image string) 
 func ankr_list_task(clientset *kubernetes.Clientset) string {
         result  := ""
 	deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
-        podsClient, err := clientset.CoreV1().Pods(apiv1.NamespaceDefault).List(metav1.ListOptions{})
-        if err != nil {
-            return ""
-        }
+        //podsClient, err := clientset.CoreV1().Pods(apiv1.NamespaceDefault).List(metav1.ListOptions{})
+        //if err != nil {
+        //    return ""
+        //}
 
-        for _, pod := range podsClient.Items {
-            if pod.Status.Phase != "Running" && !pod.Status.ContainerStatuses[0].Ready  {
-                fmt.Println(pod.Name, " not running.")
-            }
+        //for _, pod := range podsClient.Items {
+        //    if pod.Status.Phase != "Running" && !pod.Status.ContainerStatuses[0].Ready  {
+        //        fmt.Println(pod.Name, " not running.")
+        //    }
 	    //fmt.Println(pod.Name, ":", pod.Status.PodIP, ":", pod.Status.Phase, ":", pod.Status.Conditions,
                  //":", pod.Status.Message, ":", pod.Status.Reason, ":", pod.Status.HostIP, ":", pod.Status.StartTime, 
                  //":", pod.Status.InitContainerStatuses, ":", pod.Status.ContainerStatuses[0].Ready)
-        }
+        //}
 
 	//fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
@@ -356,6 +370,7 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
 								},
 							},
 						},
+/*
 						{
 							Name:  string (
                                                                "mongo",
@@ -371,6 +386,7 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
 								},
 							},
 						},
+*/
 					},
 				},
 			},
@@ -442,7 +458,7 @@ func main() {
         } else if *pboolDelete {
             taskType = DELETE_TASK
         } else if *updateNumPtr != 0 {
-            taskType = UPDATE_REPLICA
+            taskType = UPDATE_TASK
         }
 
         if *updateNumPtr < 0 {
@@ -469,6 +485,7 @@ func main() {
 
         switch taskType {
             case CREATE_TASK:
+                // command line test
                 ankr_create_task(clientset, "demo-deployment", "nginx:1.12")
                 return
             case LIST_TASK:
@@ -477,9 +494,10 @@ func main() {
             case DELETE_TASK:
                 ankr_delete_task(clientset, "demo-deployment")
                 return
-            case UPDATE_REPLICA:
+            case UPDATE_TASK:
                 fmt.Printf("update to %d replica\n", *updateNumPtr)
-                ankr_update_task(clientset, int32(*updateNumPtr), "nginx:1.13")
+                // command line test
+                ankr_update_task(clientset, int32(*updateNumPtr), "demo-deployment", "nginx:1.13")
                 return
         }
 
