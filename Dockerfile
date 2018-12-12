@@ -1,7 +1,10 @@
 # UPGRADE: Go Docker image
-FROM golang:alpine
+FROM golang:1.10-alpine3.8
 
-RUN apk update && apk add git && apk add --update bash && apk add openssh
+RUN apk update && \
+    apk add git && \
+    apk add --update bash && \
+    apk add openssh
 RUN go get github.com/golang/dep/cmd/dep
 
 COPY id_rsa /root/.ssh/
