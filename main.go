@@ -69,7 +69,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                 if in.Type == "HeartBeat" {
                     fmt.Printf("Heartbeat!\n")
                 } else  {
-                    fmt.Printf("Got message %d %d %s %s %s %s\n", in.Taskid, in.Replica, in.Name, in.Image, in.Extra, in.Type)
+                    fmt.Printf("Got message %d %d %s %s %s %s %s\n", in.Taskid, in.Replica, in.Name, in.Image, in.Extra, in.Type, in.TaskType)
 
                     if in.Type == "NewTask" {
                         taskType = CREATE_TASK
@@ -112,7 +112,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                         }
 
                         fmt.Printf("finish starting the task\n")
-                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartSuccess", Datacenter:gDcNameCLI}
+                        var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartSuccess", Datacenter:gDcNameCLI, Url:"ankr.com"}
                         if err := stream.Send(&messageSucc); err != nil {
                             fmt.Printf("Failed to send a note: %v\n", err)
                         }
