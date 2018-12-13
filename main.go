@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"log"
 	"time"
+	"strings"
 	"path/filepath"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -332,6 +333,61 @@ func ankr_list_task(clientset *kubernetes.Clientset) string {
 }
 
 func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, dockerImage string) bool {
+        var containerList []apiv1.Container
+        if strings.ContainsAny(dockerImage, ",") {
+            imageList := strings.Split(dockerImage, ",")
+            containerList = []apiv1.Container	{
+                 {
+	             Name:  string (
+                         dockerName,
+                     ),
+	             Image: string (
+                         imageList[0],
+                     ),
+		     Ports: []apiv1.ContainerPort{
+	                 {
+			     Name:          "http",
+			     Protocol:      apiv1.ProtocolTCP,
+			     ContainerPort: 80,
+	                 },
+		     },
+		 },
+		 {
+		     Name:  string (
+                         dockerName + "-2",
+                     ),
+		     Image: string (
+                         imageList[1],
+                     ),
+		     Ports: []apiv1.ContainerPort{
+			 {
+		              Name:          "http",
+			      Protocol:      apiv1.ProtocolTCP,
+			      ContainerPort: 27017,
+			 },
+		      },
+		 },
+             }
+
+        } else {
+	      containerList = []apiv1.Container	{
+                     {
+				Name:  string (
+                                    dockerName,
+                                ),
+	                        Image: string (
+                                    dockerImage,
+                                ),
+				Ports: []apiv1.ContainerPort{
+				    {
+					Name:          "http",
+					Protocol:      apiv1.ProtocolTCP,
+			                ContainerPort: 80,
+				    },
+				},
+		     },
+               }
+        }
 	deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 
 	deployment := &appsv1.Deployment{
@@ -354,40 +410,7 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
 					},
 				},
 				Spec: apiv1.PodSpec{
-					Containers: []apiv1.Container{
-						{
-							Name:  string (
-                                                               dockerName,
-                                                        ),
-							Image: string (
-                                                               dockerImage,
-                                                        ),
-							Ports: []apiv1.ContainerPort{
-								{
-									Name:          "http",
-									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: 80,
-								},
-							},
-						},
-/*
-						{
-							Name:  string (
-                                                               "mongo",
-                                                        ),
-							Image: string (
-                                                               "mongo:3.1",
-                                                        ),
-							Ports: []apiv1.ContainerPort{
-								{
-									Name:          "http",
-									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: 27017,
-								},
-							},
-						},
-*/
-					},
+					Containers: containerList,
 				},
 			},
 		},
