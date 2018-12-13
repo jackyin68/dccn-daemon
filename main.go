@@ -30,7 +30,10 @@ const (
 )
 
 const (
-        ADDRESS  = "10.0.0.61:50051"
+        IO_TIMEOUT_SECONDS = 3
+        RECONNECT_SECONDS = 3
+        HEARTBEAT_SECONDS = 30
+        ADDRESS  = "hub.ankr.network:50051"
         MAX_REPLICA = 20
 )
 
@@ -39,7 +42,6 @@ var gDcNameCLI = ""
 var gTotalPodNum =  0
 
 
-// runRouteChat receives a sequence of route notes, while sending notes for various locations.
 func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) int{
         var ret int = 0
         var taskType string
@@ -47,7 +49,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
         defer cancel()
         stream, err := client.K8Task(ctx)
         if err != nil {
-            return 3
+            return -1
         }
         waitc := make(chan struct{})
         go func() {
@@ -55,12 +57,12 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                 in, err := stream.Recv()
                 if err == io.EOF {
                         close(waitc)
-                        time.Sleep(3 * time.Second)
+                        time.Sleep(IO_TIMEOUT_SECONDS * time.Second)
                         continue
                 }
                 if err != nil {
                         fmt.Println("Failed to receive a note : %v", err)
-                        ret = 1
+                        ret = -1
                         return
                 }
 
@@ -87,6 +89,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                         podNumNew := 0
                         podsClient, err := clientset.CoreV1().Pods(apiv1.NamespaceDefault).List(metav1.ListOptions{})
                         if err != nil {
+                            ret = -1
                             return
                         }
 
@@ -102,6 +105,7 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                         if  gTotalPodNum >= podNumNew {
                             fmt.Println("remove the failed task.")
                             ankr_delete_task(clientset, in.Name)
+                            ret = -1
                             return
                         } else {
                             gTotalPodNum = podNumNew
@@ -152,13 +156,13 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
             var messageSucc = pb.K8SMessage{Datacenter:gDcNameCLI, Taskname:"", Type:"HeartBeat", Report:ankr_list_task(clientset)}
             if err := stream.Send(&messageSucc); err != nil {
                 fmt.Println("Failed to send a note: %v", err)
-                ret = 2
+                ret = -1
                 return ret
             } else {
                 fmt.Printf("Send message to Hub, %s \n", messageSucc.Type)
             }
 
-            time.Sleep(30 * time.Second)
+            time.Sleep(HEARTBEAT_SECONDS * time.Second)
         }
 
         <-waitc
@@ -278,7 +282,7 @@ func ankr_list_task(clientset *kubernetes.Clientset) string {
 	//fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
-                fmt.Printf("Probabaly the kubenetes(minikube) not started.\n")
+                fmt.Printf("Probably the kubenetes(minikube) not started.\n")
                 return ""
 	}
 
@@ -456,7 +460,7 @@ func main() {
         for { 
             ret := querytask(clientset)
             if ret != 0 {
-                time.Sleep(3 * time.Second)
+                time.Sleep(RECONNECT_SECONDS * time.Second)
                 fmt.Println("Reconnect.")
                 continue
             } else {
