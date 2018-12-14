@@ -58,7 +58,8 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                 in, err := stream.Recv()
                 if err == io.EOF {
                         close(waitc)
-                        time.Sleep(IO_TIMEOUT_SECONDS * time.Second)
+                        time.Sleep(3 * time.Second)
+                        taskType = ""
                         continue
                 }
                 if err != nil {
@@ -106,8 +107,13 @@ func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) in
                         if  gTotalPodNum >= podNumNew {
                             fmt.Println("remove the failed task.")
                             ankr_delete_task(clientset, in.Name)
-                            ret = -1
-                            return
+                            fmt.Printf("fail to start the task\n")
+                            var messageSucc = pb.K8SMessage{Taskid: in.Taskid, Taskname:in.Name, Status:"StartFailure", Datacenter:gDcNameCLI}
+                            if err := stream.Send(&messageSucc); err != nil {
+                                fmt.Printf("Failed to send a note: %v\n", err)
+                            }
+                            taskType = ""
+                            continue
                         } else {
                             gTotalPodNum = podNumNew
                         }
