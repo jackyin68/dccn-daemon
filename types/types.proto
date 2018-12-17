@@ -1,0 +1,342 @@
+syntax = "proto3";
+
+package types;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+
+option (gogoproto.stable_marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.goproto_stringer_all) = true;
+
+
+//option (gogoproto.stringer_all) = true;
+
+/* BEGIN EXCHANGE */
+message ResourceUnit {
+  option (gogoproto.compare) = true;
+  uint32 CPU    = 1 [(gogoproto.jsontag)="cpu"];
+  uint64 memory = 2;
+  uint64 disk   = 3;
+}
+
+message ResourceGroup {
+  option (gogoproto.compare) = true;
+  ResourceUnit unit  = 1 [(gogoproto.nullable) = false];
+  uint32       count = 2;
+  uint64       price = 3; // price per unit.
+}
+
+message ProviderAttribute {
+  option (gogoproto.compare) = true;
+  string name  = 1;
+  string value = 2;
+}
+
+message GroupSpec {
+  string name = 1;
+  repeated ProviderAttribute requirements = 2 [(gogoproto.nullable) = false];
+  repeated ResourceGroup     resources    = 3 [(gogoproto.nullable) = false];
+}
+
+message DeploymentGroupID {
+  option (gogoproto.goproto_stringer) = false;
+
+  // deployment address
+  bytes  deployment = 1 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+
+  // unique sequence over deployment
+  uint64 seq = 2;
+}
+
+message DeploymentGroup {
+  option (gogoproto.compare) = true;
+
+  DeploymentGroupID id = 1 [(gogoproto.embed)=true,(gogoproto.nullable)=false];
+
+  string name = 2;
+
+  // max number of blocks orders are open
+  int64 orderTTL = 3;
+
+  DeploymentGroupState state = 4;
+  enum DeploymentGroupState {
+    OPEN    = 0;
+    ORDERED = 1;
+    CLOSED  = 3;
+  }
+
+  repeated ProviderAttribute requirements = 5 [(gogoproto.nullable) = false];
+  repeated ResourceGroup     resources    = 6 [(gogoproto.nullable) = false];
+
+}
+
+message DeploymentGroups {
+  repeated DeploymentGroup items = 1;
+}
+
+message Deployment {
+  option (gogoproto.compare) = true;
+
+  /* BEGIN ID FIELDS */
+  bytes  address = 1 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  /* END ID FIELDS */
+
+  bytes  tenant  = 2 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  enum DeploymentState {
+    ACTIVE  = 0;
+    CLOSED  = 2;
+  }
+  DeploymentState state = 3;
+  bytes version = 4 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+}
+
+message Deployments {
+  repeated Deployment items = 1 [(gogoproto.nullable) = false];
+}
+
+message TxCreateDeployment {
+  bytes  tenant  = 1 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  uint64 nonce = 2;
+  int64 orderTTL = 3;
+  bytes version = 4 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  repeated GroupSpec groups = 5;
+}
+
+message TxUpdateDeployment {
+  bytes deployment = 1 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  bytes version    = 2 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+}
+
+message TxCloseDeployment {
+  // deployment address
+  bytes deployment = 1 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  enum ReasonCode {
+    UNSET = 0;
+    TENANT_CLOSE  = 1;
+    INSUFFICIENT = 2;
+  }
+  ReasonCode reason = 2;
+}
+
+/* END EXCHANGE */
+
+/* BEGIN MANIFEST */
+
+message ManifestRequest {
+  bytes key         = 1 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  bytes signature   = 2 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  bytes deployment  = 3 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  Manifest manifest = 4;
+}
+
+message Manifest {
+  repeated ManifestGroup groups = 1;
+}
+
+message ManifestGroup {
+  // Placement profile name
+  string name = 1;
+
+  // Service definitions
+  repeated ManifestService services = 2;
+}
+
+message ManifestService {
+  // Service name
+  string       name  = 1;
+
+  // Docker image
+  string       image = 2;
+
+  repeated string args = 3;
+  repeated string env  = 4;
+
+  // Resource requirements
+  ResourceUnit unit  = 5;
+
+  // Number of instances
+  uint32       count = 6;
+
+  // Overlay Network Links
+  repeated ManifestServiceExpose expose = 7;
+}
+
+message ManifestServiceExpose {
+  uint32 port         = 1;
+  uint32 externalPort = 2;
+  string proto        = 3;
+  string service      = 4;
+  bool   global       = 5;
+
+  // accepted hostnames
+  repeated string hosts = 6;
+}
+/* END MANIFEST */
+
+/* BEGIN SERVICE */
+service Cluster {
+  rpc Status(Empty) returns(ServerStatus) {
+    option (google.api.http) = {
+      get: "/status",
+    };
+  }
+  rpc Deploy(ManifestRequest) returns(DeployRespone) {
+    option (google.api.http) = {
+      post: "/manifest",
+      body: "*"
+    };
+  }
+  rpc ServiceStatus(ServiceStatusRequest) returns(ServiceStatusResponse) {
+    option (google.api.http) = {
+      get: "/{deployment}/{group}/{order}/{provider}/{name}",
+    };
+  }
+  rpc ServiceLogs(LogRequest) returns(stream Log) {
+    option (google.api.http) = {
+      post: "/logs/{deployment}/{group}/{order}/{provider}/{name}",
+      body: "options"
+    };
+  }
+}
+
+message Empty{}
+
+message Version {
+  string version = 1;
+  string commit  = 2;
+  string date    = 3;
+}
+
+message ServerStatus {
+  bytes  provider         = 1 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  Version        version  = 2 [(gogoproto.jsontag)="version"];
+  ProviderStatus status   = 3 [(gogoproto.jsontag)="status"];
+  int32          code     = 4;
+  string         message  = 5;
+}
+
+message ServerStatusParseable {
+
+  message ProviderStatus {
+    ProviderClusterStatus   cluster   = 1;
+    ProviderManifestStatus  manifest  = 2;
+    ProviderBidengineStatus bidengine = 3;
+  }
+
+  message ProviderClusterStatus {
+    ProviderInventoryStatus inventory = 1;
+  }
+
+  message ProviderInventoryStatus {
+    message ResourceUnit {
+      uint32 CPU    = 1 [(gogoproto.jsontag)="cpu"];
+      string memory = 2;
+      string disk   = 3;
+    }
+    message Reservations {
+      repeated ResourceUnit active  = 1;
+      repeated ResourceUnit pending = 2;
+    }
+    Reservations reservations        = 1;
+    repeated ResourceUnit available  = 2;
+  }
+
+  bytes          provider = 1 [(gogoproto.customtype)="github.com/Ankr-network/dccn-daemon/types/base.Bytes",(gogoproto.nullable) = false];
+  Version        version  = 2 [(gogoproto.jsontag)="version"];
+  ProviderStatus status   = 3 [(gogoproto.jsontag)="status"];
+  int32          code     = 4;
+  string         message  = 5;
+}
+
+message ProviderStatus {
+  ProviderClusterStatus   cluster   = 1;
+  ProviderManifestStatus  manifest  = 2;
+  ProviderBidengineStatus bidengine = 3;
+}
+
+message ProviderManifestStatus {
+  uint32 deployments = 1;
+}
+
+message ProviderBidengineStatus {
+  uint32 orders = 1;
+}
+
+message ProviderClusterStatus {
+  ProviderInventoryStatus inventory = 1;
+}
+
+message ProviderInventoryStatus {
+  message Resource {
+    uint32 CPU    = 1 [(gogoproto.jsontag)="cpu"];
+    uint32 memory = 2;
+    uint32 disk   = 3;
+  }
+  message Reservations {
+    repeated ResourceUnit active  = 1;
+    repeated ResourceUnit pending = 2;
+  }
+  Reservations reservations        = 1;
+  repeated ResourceUnit available  = 2;
+}
+
+message DeployRespone {
+  string message = 1;
+}
+
+message ServiceStatusRequest {
+  string name       = 1;
+  string deployment = 2;
+  string group      = 3;
+  string order      = 4;
+  string provider   = 5;
+}
+
+message ServiceStatusResponse {
+   int64 observedGeneration = 1;
+   int32 replicas           = 2;
+   int32 updatedReplicas    = 3;
+   int32 readyReplicas      = 4;
+   int32 availableReplicas  = 5;
+}
+
+message LogRequest {
+  string name        = 1;
+  string deployment  = 2;
+  string group       = 3;
+  string order       = 4;
+  string provider    = 5;
+  LogOptions options = 6;
+}
+
+message LogOptions {
+  int64 tailLines  = 1;
+  bool follow      = 2;
+}
+
+message Log {
+  string name = 1;
+  string message = 2;
+}
+
+message LogResponse {
+  Log result = 1;
+}
+
+message ServiceStatus {
+  string name          = 1;
+  repeated string URIs = 2;
+  int32 available      = 3;
+  int32 total          = 4;
+}
+
+message ManifestGetRequest {
+}
+
+message ManifestGetResponse {
+  Manifest manifest = 1;
+}
+
+/* END SERVICE */
