@@ -90,14 +90,6 @@
   revision = "c63ab54fda8f77302f8d414e19933f2b6026a089"
 
 [[projects]]
-  digest = "1:8eb1de8112c9924d59bf1d3e5c26f5eaa2bfc2a5fcbb92dc1c2e4546d695f277"
-  name = "github.com/imdario/mergo"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9f23e2d6bd2a77f959b2bf6acdbefd708a83a4a4"
-  version = "v0.3.6"
-
-[[projects]]
   digest = "1:3e551bbb3a7c0ab2a2bf4660e7fcad16db089fdcfbb44b0199e62838038623ea"
   name = "github.com/json-iterator/go"
   packages = ["."]
@@ -138,14 +130,6 @@
   version = "v2.0.1"
 
 [[projects]]
-  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
-  name = "github.com/spf13/pflag"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
-  version = "v1.0.3"
-
-[[projects]]
   branch = "master"
   digest = "1:38f553aff0273ad6f367cb0a0f8b6eecbaef8dc6cb8b50e57b6a81c1d5b1e332"
   name = "golang.org/x/crypto"
@@ -168,7 +152,7 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "891ebc4b82d6e74f468c533b06f983c7be918a96"
+  revision = "e147a9138326bc0e9d4e179541ffd8af41cff8a9"
 
 [[projects]]
   branch = "master"
@@ -190,7 +174,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "4d1cda033e0619309c606fc686de3adcf599539e"
+  revision = "074acd46bca67915925527c07849494d115e7c43"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -245,7 +229,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "bd91e49a0898e27abb88c339b432fa53d7497ac0"
+  revision = "67d6565462c5a0d99b88193d59fefa10ca7e3010"
 
 [[projects]]
   digest = "1:9edd250a3c46675d0679d87540b30c9ed253b19bd1fd1af08f4f5fb3c79fc487"
@@ -389,7 +373,7 @@
   version = "kubernetes-1.12.0"
 
 [[projects]]
-  digest = "1:e77b1751c6b62bdb74ce2cf90c2ee9a681691617d9a22f8366525ef2be364b95"
+  digest = "1:8ba88d917af7d95f9e5c73ab81c95b281989351c501b15558214ea7458fa423e"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -433,11 +417,7 @@
     "plugin/pkg/client/auth/exec",
     "rest",
     "rest/watch",
-    "tools/auth",
-    "tools/clientcmd",
     "tools/clientcmd/api",
-    "tools/clientcmd/api/latest",
-    "tools/clientcmd/api/v1",
     "tools/metrics",
     "tools/reference",
     "transport",
@@ -463,7 +443,7 @@
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/client-go/kubernetes",
-    "k8s.io/client-go/tools/clientcmd",
+    "k8s.io/client-go/rest",
     "k8s.io/client-go/util/homedir",
     "k8s.io/client-go/util/retry",
   ]
