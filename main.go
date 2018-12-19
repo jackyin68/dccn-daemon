@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -57,7 +56,7 @@ func sendTaskStatus(client pb.Dccnk8SClient, clientset *kubernetes.Clientset) in
 				continue
 			}
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println(err)
 				fmt.Println("Failed to receive a note : %v", err)
 				ret = 1
 				return
@@ -307,7 +306,7 @@ func ankr_list_task(clientset *kubernetes.Clientset) string {
 	//fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 		fmt.Printf("Probabaly the kubenetes(minikube) not started.\n")
 		return ""
 	}
