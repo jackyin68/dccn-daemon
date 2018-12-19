@@ -246,6 +246,7 @@ func ankr_delete_task(clientset *kubernetes.Clientset, dockerName string) bool {
 	if err := deploymentsClient.Delete(dockerName, &metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	}); err != nil {
+		fmt.Println(err)
 		return false
 	}
 
@@ -418,6 +419,7 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
 	fmt.Println("Creating deployment...")
 
 	podsClient, err := clientset.CoreV1().Pods(apiv1.NamespaceDefault).List(metav1.ListOptions{})
+	fmt.Println(err)
 	if err != nil {
 		return false
 	}
@@ -429,6 +431,7 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
 	}
 
 	result, err := deploymentsClient.Create(deployment)
+	fmt.Println(err)
 	if err != nil {
 		fmt.Println("probably already exist:.\n", err, result)
 		return false
