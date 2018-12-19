@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/Ankr-network/dccn-rpc/protocol"
+	pb "github.com/Ankr-network/dccn-rpc/protocol_new/k8s"
 	"golang.org/x/net/context"
 	gogrpc "google.golang.org/grpc"
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,7 +37,7 @@ var gDcNameCLI = ""
 var gTotalPodNum = 0
 
 // runRouteChat receives a sequence of route notes, while sending notes for various locations.
-func sendTaskStatus(client pb.DccncliClient, clientset *kubernetes.Clientset) int {
+func sendTaskStatus(client pb.Dccnk8SClient, clientset *kubernetes.Clientset) int {
 	var ret int = 0
 	var taskType string
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Second)
@@ -197,7 +197,7 @@ func querytask(clientset *kubernetes.Clientset) int {
 		return 1
 	}
 	defer conn.Close()
-	c := pb.NewDccncliClient(conn)
+	c := pb.NewDccnk8SClient(conn)
 
 	return sendTaskStatus(c, clientset)
 	/*synchronous one time call*/
@@ -215,28 +215,28 @@ func querytask(clientset *kubernetes.Clientset) int {
 	*/
 }
 
-func sendreport() {
-	var hubAddress string = gAddressCLI
-	if len(hubAddress) == 0 {
-		hubAddress = ADDRESS
-	}
-
-	conn, err := gogrpc.Dial(hubAddress, gogrpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer conn.Close()
-	c := pb.NewDccncliClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	r, err := c.K8ReportStatus(ctx, &pb.ReportRequest{Name: gDcNameCLI, Report: "job2 job2 job3 host 100", Host: "127.0.0.67", Port: 5009})
-	if err != nil {
-		fmt.Printf("Fail to connect to server. Error:\n")
-		log.Fatalf("Client: could not send: %v", err)
-	}
-
-	fmt.Printf("received Status : %s \n", r.Status)
+func sendreport() {  // this function does not use
+	// var hubAddress string = gAddressCLI
+	// if len(hubAddress) == 0 {
+	// 	hubAddress = ADDRESS
+	// }
+	//
+	// conn, err := gogrpc.Dial(hubAddress, gogrpc.WithInsecure())
+	// if err != nil {
+	// 	log.Fatalf("did not connect: %v", err)
+	// }
+	// defer conn.Close()
+	// c := pb.NewDccnk8SClient(conn)
+	//
+	// ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// defer cancel()
+	// r, err := c.K8ReportStatus(ctx, &pb.ReportRequest{Name: gDcNameCLI, Report: "job2 job2 job3 host 100", Host: "127.0.0.67", Port: 5009})
+	// if err != nil {
+	// 	fmt.Printf("Fail to connect to server. Error:\n")
+	// 	log.Fatalf("Client: could not send: %v", err)
+	// }
+	//
+	// fmt.Printf("received Status : %s \n", r.Status)
 }
 
 func ankr_delete_task(clientset *kubernetes.Clientset, dockerName string) bool {
