@@ -215,7 +215,7 @@ func querytask(clientset *kubernetes.Clientset) int {
 	*/
 }
 
-func sendreport() {  // this function does not use
+func sendreport() { // this function does not use
 	// var hubAddress string = gAddressCLI
 	// if len(hubAddress) == 0 {
 	// 	hubAddress = ADDRESS
