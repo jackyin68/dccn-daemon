@@ -7,11 +7,12 @@ metadata:
 spec:
   replicas: 1
   selector:
-    name: dccn-daemon
+    app: dccn-daemon
   template:
     metadata:
+      name: dccn-daemon
       labels:
-        name: dccn-daemon
+        app: dccn-daemon
     spec:
       imagePullSecrets:
       - name: dccn-ecr
