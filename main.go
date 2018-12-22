@@ -429,7 +429,7 @@ func ankr_create_task(clientset *kubernetes.Clientset, dockerName string, docker
 		gTotalPodNum += 1
 		fmt.Println(pod.Name, pod.Status.PodIP)
 	}
-
+	gTotalPodNum -= 1
 	result, err := deploymentsClient.Create(deployment)
 	fmt.Println(err)
 	if err != nil {
