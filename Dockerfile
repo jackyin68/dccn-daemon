@@ -17,4 +17,4 @@ COPY . $GOPATH/src/dccn-daemon
 
 EXPOSE 8080
 
-CMD go run main.go --ip ${URL_BRANCH} --port 50051 --dcName datacenter_1
+CMD go run main.go --ip $URL_BRANCH --port 50051 --dcName datacenter_1
