@@ -1,6 +1,7 @@
 # UPGRADE: Go Docker image
 FROM golang:alpine
 ARG URL_BRANCH
+ENV URL_BRANCH ${URL_BRANCH}
 RUN apk update && apk add git && apk add --update bash && apk add openssh
 RUN go get github.com/golang/dep/cmd/dep
 
