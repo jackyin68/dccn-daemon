@@ -16,6 +16,12 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+type taskCtx struct {
+	*pb.Task
+	stream pb.Dccnk8S_K8TaskClient
+	ctx    context.Context
+}
+
 func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
 	runner, err := task.NewRunner(cfgpath, namespace, ingressHost)
@@ -25,9 +31,9 @@ func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 
 	go taskMetering(runner, dcName, namespace, tendermintServer, tendermintWsEndpoint)
 
-	var taskCh = make(chan *pb.Task) // block chan, serve single task one time
-	go taskHandler(runner, dcName, taskCh)
-	return taskReciver(runner, hubServer, taskCh)
+	var taskCh = make(chan *taskCtx) // block chan, serve single task one time
+	go taskOperator(runner, dcName, taskCh)
+	return taskReciver(runner, hubServer, dcName, taskCh)
 }
 
 func taskMetering(r *task.Runner, dcName, namespace, server, wsEndpoint string) {
@@ -55,39 +61,9 @@ func taskMetering(r *task.Runner, dcName, namespace, server, wsEndpoint string) 
 	}
 }
 
-var stream pb.Dccnk8S_K8TaskClient // interface is refer type, CPU keep atomic action, lock free
-
-func taskReciver(r *task.Runner, hubServer string, taskCh chan<- *pb.Task) error {
-	dialStream := func(timeout time.Duration) (pb.Dccnk8S_K8TaskClient, func(), error) {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-
-		conn, err := grpc.DialContext(context.Background(), hubServer, grpc.WithInsecure(),
-			grpc.WithKeepaliveParams(keepalive.ClientParameters{ // TODO: dynamic config in config file
-				Time:    20 * time.Second,
-				Timeout: 5 * time.Second,
-			}))
-		if err != nil {
-			cancel()
-			return nil, nil, errors.Wrapf(err, "dail ankr hub %s", hubServer)
-		}
-
-		client := pb.NewDccnk8SClient(conn)
-		stream, err := client.K8Task(ctx)
-		if err != nil {
-			cancel()
-			conn.Close()
-			return nil, nil, errors.Wrap(err, "listen k8s task")
-		}
-
-		return stream, func() {
-			cancel()
-			stream.CloseSend()
-			conn.Close()
-		}, nil
-	}
-
+func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCtx) error {
 	// try once to test connection, all tests should finish in 5s
-	_, closeStream, err := dialStream(5 * time.Second)
+	stream, closeStream, err := dialStream(5*time.Second, hubServer)
 	if err != nil {
 		return err
 	}
@@ -97,13 +73,18 @@ func taskReciver(r *task.Runner, hubServer string, taskCh chan<- *pb.Task) error
 	redial := true
 	for {
 		if redial {
-			stream, closeStream, err = dialStream(1000 * time.Second)
+			stream, closeStream, err = dialStream(1000, hubServer)
 			if err != nil {
 				glog.Errorln("client fail to receive task:", err)
 				continue
 			}
 
-			redial = false
+			// regist dc
+			if err := heartBeat(r, dcName, stream); err != nil {
+				closeStream()
+			} else {
+				redial = false
+			}
 		}
 
 		if in, err := stream.Recv(); err == io.EOF {
@@ -119,85 +100,72 @@ func taskReciver(r *task.Runner, hubServer string, taskCh chan<- *pb.Task) error
 
 		} else {
 			glog.V(1).Infof("new task %s: %v", in.Type, in)
-			taskCh <- in
+			taskCh <- &taskCtx{
+				Task:   in,
+				stream: stream,
+			}
 		}
 	}
 }
 
-func taskHandler(r *task.Runner, dcName string, taskCh <-chan *pb.Task) {
-	//send heartBeat to register cluster
-	tick := time.Tick(200 * time.Millisecond)
-	for range tick {
-		glog.V(3).Infof("%v", stream)
-		if stream != nil {
-			break
-		}
-	}
-	heartBeat(r, dcName, stream)
-	glog.Infoln("Task reciver started.")
-
-	tick = time.Tick(30 * time.Second)
+func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
+	glog.Infoln("Task operator started.")
 	for {
-		select {
-		case <-tick:
-			go heartBeat(r, dcName, stream)
+		task, ok := <-taskCh
+		if !ok {
+			return
+		}
 
-		case task, ok := <-taskCh:
-			if !ok {
-				return
+		var message = pb.K8SMessage{
+			Datacenter: dcName,
+			Taskname:   task.Name,
+			Type:       task.Type,
+		}
+		taskName := fmt.Sprintf("%s_%d", task.Name, task.Taskid)
+
+		switch task.Type {
+		case HeartBeat.String():
+			heartBeat(r, dcName, task.stream)
+
+		case NewTask.String():
+			images := strings.Split(task.Image, ",")
+			if err := r.CreateTasks(taskName, images...); err != nil {
+				glog.V(1).Infoln(err)
+				message.Status = StartFailure.String()
+				message.Report = err.Error()
+			} else {
+				message.Status = StartSuccess.String()
 			}
 
-			var message = pb.K8SMessage{
-				Datacenter: dcName,
-				Taskname:   task.Name,
-				Type:       task.Type,
+			send(task.stream, &message)
+
+		case UpdateTask.String():
+			// FIXME: hard code for no definition in protobuf
+			if err := r.UpdateTask(taskName, task.Image, 2, 80, 80); err != nil {
+				glog.V(1).Infoln(err)
+				message.Status = UpdateFailure.String()
+				message.Report = err.Error()
+			} else {
+				message.Status = UpdateSuccess.String()
 			}
-			taskName := fmt.Sprintf("%s_%d", task.Name, task.Taskid)
 
-			switch task.Type {
-			case HeartBeat.String():
-				heartBeat(r, dcName, stream)
+			send(task.stream, &message)
 
-			case NewTask.String():
-				images := strings.Split(task.Image, ",")
-				if err := r.CreateTasks(taskName, images...); err != nil {
-					glog.V(1).Infoln(err)
-					message.Status = StartFailure.String()
-					message.Report = err.Error()
-				} else {
-					message.Status = StartSuccess.String()
-				}
-
-				send(stream, &message)
-
-			case UpdateTask.String():
-				// FIXME: hard code for no definition in protobuf
-				if err := r.UpdateTask(taskName, task.Image, 2, 80, 80); err != nil {
-					glog.V(1).Infoln(err)
-					message.Status = UpdateFailure.String()
-					message.Report = err.Error()
-				} else {
-					message.Status = UpdateSuccess.String()
-				}
-
-				send(stream, &message)
-
-			case CancelTask.String():
-				if err := r.CancelTask(taskName); err != nil {
-					glog.V(1).Infoln(err)
-					message.Status = CancelFailure.String()
-					message.Report = err.Error()
-				} else {
-					message.Status = Cancelled.String()
-				}
-
-				send(stream, &message)
+		case CancelTask.String():
+			if err := r.CancelTask(taskName); err != nil {
+				glog.V(1).Infoln(err)
+				message.Status = CancelFailure.String()
+				message.Report = err.Error()
+			} else {
+				message.Status = Cancelled.String()
 			}
+
+			send(task.stream, &message)
 		}
 	}
 }
 
-func heartBeat(r *task.Runner, dcName string, stream pb.Dccnk8S_K8TaskClient) {
+func heartBeat(r *task.Runner, dcName string, stream pb.Dccnk8S_K8TaskClient) error {
 	var message = pb.K8SMessage{
 		Datacenter: dcName,
 		Taskname:   "",
@@ -212,13 +180,43 @@ func heartBeat(r *task.Runner, dcName string, stream pb.Dccnk8S_K8TaskClient) {
 		message.Report = strings.Join(tasks, "\n")
 	}
 
-	send(stream, &message)
+	return send(stream, &message)
 }
 
-func send(stream pb.Dccnk8S_K8TaskClient, msg *pb.K8SMessage) {
+func dialStream(timeout time.Duration, hubServer string) (stream pb.Dccnk8S_K8TaskClient, cancel func(), err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	conn, err := grpc.DialContext(context.Background(), hubServer, grpc.WithInsecure(),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{ // TODO: dynamic config in config file
+			Time:    20 * time.Second,
+			Timeout: 5 * time.Second,
+		}))
+	if err != nil {
+		cancel()
+		return nil, nil, errors.Wrapf(err, "dail ankr hub %s", hubServer)
+	}
+
+	client := pb.NewDccnk8SClient(conn)
+	stream, err = client.K8Task(ctx)
+	if err != nil {
+		cancel()
+		conn.Close()
+		return nil, nil, errors.Wrap(err, "listen k8s task")
+	}
+
+	return stream, func() {
+		cancel()
+		stream.CloseSend()
+		conn.Close()
+	}, nil
+}
+
+func send(stream pb.Dccnk8S_K8TaskClient, msg *pb.K8SMessage) error {
 	if err := stream.Send(msg); err != nil {
 		glog.V(2).Infof("send (%v) fail: %s", *msg, err)
-		return
+		return err
 	}
+
 	glog.V(3).Infof("send %s success", msg.Type)
+	return nil
 }
