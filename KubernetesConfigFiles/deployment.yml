@@ -15,6 +15,6 @@ spec:
       containers:
       - name: deployment-daemon
         image: "815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:dccn_daemon"
-        command: ["./dccn-daemon"]
-        args: ["start","dev-cluster","-s","hub.ankr.network","-n","test-deploy","-S","dccn-tendermint"]
+        command: ["dccn-daemon"]
+        args: ["start","datacenter_name","-s","k8s-adapter-service","-p","50051","-n","test-deploy","-S","dccn-tendermint","-v2"]
         imagePullPolicy: Always
