@@ -2,51 +2,37 @@
 
 ## Functionalities in the first version, 
 
-talk to cluster master
+1. talk to cluster master
 
-finish the self-registration when boot up.
+1. finish the self-registration when boot up.
 
-add a task
+1. add a task
 
-list tasks
+1. list tasks
 
-delete a task
+1. delete a task
 
 ## Usage
-./ankr-daemon
+`./ankr-daemon`
 
-  -create
+- `create`: create taska (for test)
 
-    	create taska (for test)
+- `delete`: delete task (for test)
 
-  -delete
+- `ip`: ankr hub ip address `string`
 
-    	delete task (for test)
+- `kubeconfig`: (optional) absolute path to the kubeconfig file (default "/home/boinc/.kube/config") `string`
 
-  -ip string
+- `list`: list task (for test)
 
-    	ankr hub ip address
+- `port`: ankr hub port number `string`
 
-  -kubeconfig string
+- `dcName`: data center name `string`
 
-    	(optional) absolute path to the kubeconfig file (default "/home/boinc/.kube/config")
-
-  -list
-
-    	list task (for test)
-
-  -port string
-
-    	ankr hub port number
-
-  -dcName string
-
-    	data center name
-
-Example:
-go build -o ankr-daemon .
-./ankr-daemon --ip 1.1.1.1 --port 5678 
-./ankr-daemon --ip hub.ankr.network --port 5678 --dcName mydcname
+### Example:
+- `go build -o ankr-daemon .`
+- `./ankr-daemon --ip 1.1.1.1 --port 5678`
+- `./ankr-daemon --ip hub.ankr.network --port 5678 --dcName mydcname`
 
 ## Installation
 
