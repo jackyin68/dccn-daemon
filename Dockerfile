@@ -1,8 +1,12 @@
 # UPGRADE: Go Docker image
-FROM golang:alpine
+FROM golang:1.10-alpine3.8
+
 ARG URL_BRANCH
 ENV URL_BRANCH ${URL_BRANCH}
-RUN apk update && apk add git && apk add --update bash && apk add openssh
+RUN apk update && \
+    apk add --no-cache git && \
+    apk add --update --no-cache bash && \
+    apk add --no-cache openssh
 RUN go get github.com/golang/dep/cmd/dep
 
 COPY id_rsa /root/.ssh/
@@ -18,4 +22,7 @@ COPY . $GOPATH/src/dccn-daemon
 
 EXPOSE 8080
 
-CMD go run main.go --ip $URL_BRANCH --port 50051 --dcName datacenter_1
+CMD go run main.go \
+    --ip $URL_BRANCH \
+    --port 50051 \
+    --dcName datacenter_1
