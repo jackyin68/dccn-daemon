@@ -7,8 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	pb "github.com/Ankr-network/dccn-rpc/protocol_new/k8s"
+	pb "github.com/Ankr-network/dccn-common/protocol/k8s"
 	"golang.org/x/net/context"
 	gogrpc "google.golang.org/grpc"
 	appsv1 "k8s.io/api/apps/v1"
