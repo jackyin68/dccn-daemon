@@ -1,10 +1,10 @@
-# Ankr DCCN Daemon
+# Set up CI/CD for Ankr daemon
 
-## Functionalities in the 1st version
+## Functionalities in the first version
 
-1. Communication to cluster master
+1. Talk to cluster master
 
-2. Finish the self-registration upon booting up
+2. Finish the self-registration when booting up.
 
 3. Add a task
 
@@ -15,40 +15,43 @@
 ## Usage
 `./ankr-daemon`
 
-- `create`: create task (for test)
+- `task`
+  - `create`:      create deploy task
+  - `delete`:      delete exist task
+  - `list`:        list tasks
+  - `update`:      update exist task
+- `start`:      start long running service
+- `bc`:         blockchain
+  - `metering`      get metering data, and store it into blockchain
+- `version`:    print version info
 
-- `delete`: delete task (for test)
-
-- `ip`: ankr hub ip address `string`
-
-- `kubeconfig`: (optional) absolute path to the kubeconfig file (default "/home/boinc/.kube/config") `string`
-
-- `list`: list task (for test)
-
-- `port`: ankr hub port number `string`
-
-- `dcName`: data center name `string`
 
 ### Example:
-- `go build -o ankr-daemon .`
-- `./ankr-daemon --ip 1.1.1.1 --port 5678`
-- `./ankr-daemon --ip hub.ankr.network --port 5678 --dcName mydcname`
+- `make`
+- `./dccn-daemon version`
+- `./dccn-daemon task create test-deploy nginx:1.12`
+- `./dccn-daemon task list`
+- `./dccn-daemon task delete test-deploy`
+
 
 ## Installation
 
+### native
+
 1. install kubenetes first.
 
-2. clone this repository.
+2. `go get github.com/Ankr-daemon/dccn-daemon`
 
-3. use "go run main.go" to test if you have all libraries, and then use "go get" to get all the libraries.
+3. `cd "${GOPATH%:*}/src/github.com/Ankr-daemon/dccn-daemon`
 
-4. use "go run main.go --ip 1.1.1.1 --port 5678" to run the daemon. or "go build -o ankr-daemon ."
+4. `make dev-install`
 
-5. will use installer or docker to install later.
+5. use `make` to run test and compile
 
-Note: there are different ways to install kubernetes, most of time the config is already there. But in some case, you need to generate the config file yourself, like below.
+### kubenetes
 
-microk8s.kubectl config view --raw > $HOME/.kube/config
+1. change ankr-hub address in `KubernetesConfigFiles/deployment.yml`
+2. `apply -f KubernetesConfigFiles`
 
 
 ## Objective
