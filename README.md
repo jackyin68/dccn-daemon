@@ -1,5 +1,56 @@
 # Set up CI/CD for Ankr daemon
 
+## Functionalities in the first version, 
+
+1. talk to cluster master
+
+1. finish the self-registration when boot up.
+
+1. add a task
+
+1. list tasks
+
+1. delete a task
+
+## Usage
+`./ankr-daemon`
+
+- `create`: create taska (for test)
+
+- `delete`: delete task (for test)
+
+- `ip`: ankr hub ip address `string`
+
+- `kubeconfig`: (optional) absolute path to the kubeconfig file (default "/home/boinc/.kube/config") `string`
+
+- `list`: list task (for test)
+
+- `port`: ankr hub port number `string`
+
+- `dcName`: data center name `string`
+
+### Example:
+- `go build -o ankr-daemon .`
+- `./ankr-daemon --ip 1.1.1.1 --port 5678`
+- `./ankr-daemon --ip hub.ankr.network --port 5678 --dcName mydcname`
+
+## Installation
+
+1. install kubenetes first.
+
+2. clone this repository.
+
+3. use "go run main.go" to test if you have all libraries, and then use "go get" to get all the libraries.
+
+4. use "go run main.go --ip 1.1.1.1 --port 5678" to run the daemon. or "go build -o ankr-daemon ."
+
+5. will use installer or docker to install later.
+
+Note: there are different ways to install kubernetes, most of time the config is already there. But in some case, you need to generate the config file yourself, like below.
+
+microk8s.kubectl config view --raw > $HOME/.kube/config
+
+
 ## Objective
 
 Set up CI/CD pipeline for Ankr daemon using CircleCI, so each commit pushed to GitHub will create the Docker image for the daemon, and push it to the AWS ECR registry.
