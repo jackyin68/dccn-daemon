@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	ankr_const "github.com/Ankr-network/dccn-common"
 	pb "github.com/Ankr-network/dccn-common/protocol/k8s"
 	"golang.org/x/net/context"
 	gogrpc "google.golang.org/grpc"
@@ -175,7 +176,7 @@ func sendTaskStatus(client pb.Dccnk8SClient, clientset *kubernetes.Clientset) in
 			fmt.Printf("Send message to Hub, %s \n", messageSucc.Type)
 		}
 
-		time.Sleep(30 * time.Second)
+		time.Sleep(ankr_const.HeartBeatInterval * time.Second)
 	}
 
 	<-waitc

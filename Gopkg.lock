@@ -2,12 +2,15 @@
 
 
 [[projects]]
-  branch = "feature/swdev-110-ankr_rpc"
-  digest = "1:3de35c5cd1a827bf0d1a8dc42097d6336d44568fcc0533465ed595f936c56dba"
-  name = "github.com/Ankr-network/dccn-rpc"
-  packages = ["protocol_new/k8s"]
+  branch = "feature/SWDEV-117-ankr_comm"
+  digest = "1:2c3d72c57e5c236aaaa6d6f6998d1364732f0ebe69a8c743100392f5fe973bc8"
+  name = "github.com/Ankr-network/dccn-common"
+  packages = [
+    ".",
+    "protocol/k8s",
+  ]
   pruneopts = "UT"
-  revision = "2c54784f10b4e9c36b6106c4621d9021a7ebeae2"
+  revision = "630226b9390dd1500effe9826b5e8ba5bef4226a"
 
 [[projects]]
   digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
@@ -124,18 +127,18 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "e147a9138326bc0e9d4e179541ffd8af41cff8a9"
+  revision = "927f97764cc334a6575f4b7a1584a147864d5723"
 
 [[projects]]
   branch = "master"
-  digest = "1:ba8cbf57cfd92d5f8592b4aca1a35d92c162363d32aeabd5b12555f8896635e7"
+  digest = "1:10405139b45e3a97a3842c93984710e30466eb933545f219ad3f5e45246973b4"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "UT"
-  revision = "074acd46bca67915925527c07849494d115e7c43"
+  revision = "9a3f9b0469bbc6b8802087ae5c0af9f61502de01"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -174,7 +177,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "UT"
-  revision = "67d6565462c5a0d99b88193d59fefa10ca7e3010"
+  revision = "bd9b4fb69e2ffd37621a6caa54dcbead29b546f2"
 
 [[projects]]
   digest = "1:9edd250a3c46675d0679d87540b30c9ed253b19bd1fd1af08f4f5fb3c79fc487"
@@ -371,7 +374,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Ankr-network/dccn-rpc/protocol_new/k8s",
+    "github.com/Ankr-network/dccn-common",
+    "github.com/Ankr-network/dccn-common/protocol/k8s",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
     "k8s.io/api/apps/v1",
