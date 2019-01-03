@@ -8,6 +8,7 @@ import (
 	"github.com/Ankr-network/dccn-daemon/types"
 )
 
+//go:generate mockgen -package $GOPACKAGE -destination mock_client.go github.com/Ankr-network/dccn-daemon/task/kube Client
 type Client interface {
 	Deploy(manifest *types.ManifestGroup) error
 	TeardownNamespace() error

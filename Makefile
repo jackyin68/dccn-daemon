@@ -22,7 +22,6 @@ gofmt:
 	go fmt ./...
 
 golint:
-	# github.com/golangci/golangci-lint/cmd/golangci-lint
 	golangci-lint run
 
 clean:
@@ -35,6 +34,8 @@ dev-install:
 	dep ensure -v
 	go get -v golang.org/x/tools/cmd/stringer
 	go get -v github.com/gogo/protobuf/protoc-gen-gogo
+	go get -v github.com/golang/mock/mockgen
+	go get -v github.com/golangci/golangci-lint/cmd/golangci-lint
 	# go get -v github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 	# go get -v github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 
