@@ -9,6 +9,7 @@ RUN apk update && \
     apk add --no-cache git && \
     apk add --update --no-cache bash && \
     apk add --no-cache openssh
+# To do: use stable version
 RUN go get github.com/golang/dep/cmd/dep
 
 COPY id_rsa /root/.ssh/

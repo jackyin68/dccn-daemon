@@ -194,6 +194,7 @@ func querytask(clientset *kubernetes.Clientset) int {
 	conn, err := gogrpc.Dial(hubAddress, gogrpc.WithInsecure())
 	if err != nil {
 		//log.Fatalf("did not connect: %v", err)
+		// To do: define better error code or error handling
 		return 1
 	}
 	defer conn.Close()
@@ -413,6 +414,7 @@ func main() {
 	} else if *pboolDelete {
 		taskType = DELETE_TASK
 	} else if *pintReplica != 0 {
+		// To do: this should be based on the action instead of Replica number
 		taskType = UPDATE_TASK
 	}
 
