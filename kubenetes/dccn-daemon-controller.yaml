@@ -20,6 +20,3 @@ spec:
       - image: 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn-daemon:feat
         imagePullPolicy: "Always"
         name: daemon
-        ports:
-        - containerPort: 50051
-          name: daemon-port
