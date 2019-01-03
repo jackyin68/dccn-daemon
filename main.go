@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	ankr_const "github.com/Ankr-network/dccn-common"
 	pb "github.com/Ankr-network/dccn-common/protocol/k8s"
 	"golang.org/x/net/context"
@@ -57,7 +58,7 @@ func sendTaskStatus(client pb.Dccnk8SClient, clientset *kubernetes.Clientset) in
 			}
 			if err != nil {
 				fmt.Println(err)
-				fmt.Println("Failed to receive a note : %v", err)
+				fmt.Printf("Failed to receive a note : %v \n", err)
 				ret = 1
 				return
 			}
@@ -169,7 +170,7 @@ func sendTaskStatus(client pb.Dccnk8SClient, clientset *kubernetes.Clientset) in
 	for {
 		var messageSucc = pb.K8SMessage{Datacenter: gDcNameCLI, Taskname: "", Type: "HeartBeat", Report: ankr_list_task(clientset)}
 		if err := stream.Send(&messageSucc); err != nil {
-			fmt.Println("Failed to send a note: %v", err)
+			fmt.Printf("Failed to send a note: %v \n", err)
 			ret = 2
 			return ret
 		} else {
@@ -179,9 +180,9 @@ func sendTaskStatus(client pb.Dccnk8SClient, clientset *kubernetes.Clientset) in
 		time.Sleep(ankr_const.HeartBeatInterval * time.Second)
 	}
 
-	<-waitc
+	// <-waitc
 
-	return 0
+	// return 0
 }
 
 func querytask(clientset *kubernetes.Clientset) int {
@@ -199,43 +200,6 @@ func querytask(clientset *kubernetes.Clientset) int {
 	c := pb.NewDccnk8SClient(conn)
 
 	return sendTaskStatus(c, clientset)
-	/*synchronous one time call*/
-	/*
-	   	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second )
-	   	defer cancel()
-
-	           r, err := c.K8QueryTask(ctx, &pb.QueryTaskRequest{Name:"datacenter_2"})
-	           if err != nil {
-	               fmt.Printf("Fail to connect to server. Error:\n")
-	               log.Fatalf("Client: could not send: %v", err)
-	           }
-
-	           fmt.Printf("received new task  : %d %s %s \n", r.Taskid, r.Name, r.Extra)
-	*/
-}
-
-func sendreport() { // this function does not use
-	// var hubAddress string = gAddressCLI
-	// if len(hubAddress) == 0 {
-	// 	hubAddress = ADDRESS
-	// }
-	//
-	// conn, err := gogrpc.Dial(hubAddress, gogrpc.WithInsecure())
-	// if err != nil {
-	// 	log.Fatalf("did not connect: %v", err)
-	// }
-	// defer conn.Close()
-	// c := pb.NewDccnk8SClient(conn)
-	//
-	// ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	// defer cancel()
-	// r, err := c.K8ReportStatus(ctx, &pb.ReportRequest{Name: gDcNameCLI, Report: "job2 job2 job3 host 100", Host: "127.0.0.67", Port: 5009})
-	// if err != nil {
-	// 	fmt.Printf("Fail to connect to server. Error:\n")
-	// 	log.Fatalf("Client: could not send: %v", err)
-	// }
-	//
-	// fmt.Printf("received Status : %s \n", r.Status)
 }
 
 func ankr_delete_task(clientset *kubernetes.Clientset, dockerName string) bool {
@@ -290,21 +254,6 @@ func ankr_update_task(clientset *kubernetes.Clientset, num int32, taskname strin
 func ankr_list_task(clientset *kubernetes.Clientset) string {
 	result := ""
 	deploymentsClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
-	//podsClient, err := clientset.CoreV1().Pods(apiv1.NamespaceDefault).List(metav1.ListOptions{})
-	//if err != nil {
-	//    return ""
-	//}
-
-	//for _, pod := range podsClient.Items {
-	//    if pod.Status.Phase != "Running" && !pod.Status.ContainerStatuses[0].Ready  {
-	//        fmt.Println(pod.Name, " not running.")
-	//    }
-	//fmt.Println(pod.Name, ":", pod.Status.PodIP, ":", pod.Status.Phase, ":", pod.Status.Conditions,
-	//":", pod.Status.Message, ":", pod.Status.Reason, ":", pod.Status.HostIP, ":", pod.Status.StartTime,
-	//":", pod.Status.InitContainerStatuses, ":", pod.Status.ContainerStatuses[0].Ready)
-	//}
-
-	//fmt.Printf("Listing deployments in namespace %q:\n", apiv1.NamespaceDefault)
 	list, err := deploymentsClient.List(metav1.ListOptions{})
 	if err != nil {
 		fmt.Println(err)
@@ -314,15 +263,6 @@ func ankr_list_task(clientset *kubernetes.Clientset) string {
 
 	for _, d := range list.Items {
 		_, err := deploymentsClient.Get(d.Name, metav1.GetOptions{})
-		if err == nil {
-			//fmt.Printf("status.AvailableReplicas:%s\n", d.Status.AvailableReplicas)
-			//fmt.Printf("revision:%s\n", d.Revision)
-			//fmt.Printf("image:%s\n", d.Spec.Template.Spec.Containers[0].Image)
-			//fmt.Printf("NodeName:%s\n", d.Spec.Template.Spec.NodeName)
-			//fmt.Printf("Hostname:%s\n", d.Spec.Template.Spec.Hostname)
-			//fmt.Printf("containers:%s\n", d.Spec.Template.Spec.Containers[0])
-			//fmt.Printf("%s\n", cc)
-		}
 		fmt.Printf("task name: %s, image:%s (%d replicas running)\n\n", d.Name,
 			d.Spec.Template.Spec.Containers[0].Image, *d.Spec.Replicas)
 		result += "Task:" + string(d.Name) + "," + "Image:" + d.Spec.Template.Spec.Containers[0].Image +
@@ -454,16 +394,7 @@ func main() {
 	flag.StringVar(&ipCLI, "ip", "", "ankr hub ip address")
 	flag.StringVar(&portCLI, "port", "", "ankr hub port number")
 	flag.StringVar(&gDcNameCLI, "dcName", "", "data center name")
-	updateNumPtr := flag.Int("update", 0, "replica number")
-	/*
-		var kubeconfig *string
-		if home := homedir.HomeDir(); home != "" {
-			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"),
-				"(optional) absolute path to the kubeconfig file")
-		} else {
-			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-		}
-	*/
+	pintReplica := flag.Int("update", 0, "replica number")
 	flag.Parse()
 
 	if len(gDcNameCLI) == 0 {
@@ -481,32 +412,19 @@ func main() {
 		taskType = LIST_TASK
 	} else if *pboolDelete {
 		taskType = DELETE_TASK
-	} else if *updateNumPtr != 0 {
+	} else if *pintReplica != 0 {
 		taskType = UPDATE_TASK
 	}
 
-	if *updateNumPtr < 0 {
-		fmt.Printf("invalid replica number:%d\n", *updateNumPtr)
+	if *pintReplica < 0 {
+		fmt.Printf("invalid replica number:%d\n", *pintReplica)
 		return
-	} else if *updateNumPtr > MAX_REPLICA {
-		fmt.Printf("replica number %d it too big. Maximum is %d.\n", *updateNumPtr, MAX_REPLICA)
+	} else if *pintReplica > MAX_REPLICA {
+		fmt.Printf("replica number %d it too big. Maximum is %d.\n", *pintReplica, MAX_REPLICA)
 		return
 	}
 
 	fmt.Println(taskType)
-	/*
-	   	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	   	if err != nil {
-	   		panic(err)
-	   	}
-
-	           fmt.Println(config.Host)
-
-	   	clientset, err := kubernetes.NewForConfig(config)
-	   	if err != nil {
-	   		panic(err)
-	       }
-	*/
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -534,9 +452,9 @@ func main() {
 		ankr_delete_task(clientset, "demo-deployment")
 		return
 	case UPDATE_TASK:
-		fmt.Printf("update to %d replica\n", *updateNumPtr)
+		fmt.Printf("update to %d replica\n", *pintReplica)
 		// command line test
-		ankr_update_task(clientset, int32(*updateNumPtr), "demo-deployment", "nginx:1.13")
+		ankr_update_task(clientset, int32(*pintReplica), "demo-deployment", "nginx:1.13")
 		return
 	}
 

@@ -12,4 +12,8 @@ COPY . $GOPATH/src/dccn-daemon
 
 EXPOSE 8080
 
-CMD go run main.go --ip hub.ankr.network --port 50051 --dcName ankr_datacenter1 --kubeconfig ankr.yaml
+CMD go run main.go \
+    --ip hub.ankr.network \
+    --port 50051 \
+    --dcName ankr_datacenter1 \
+    --kubeconfig ankr.yaml

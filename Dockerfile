@@ -1,4 +1,6 @@
 # UPGRADE: Go Docker image
+# To do: use https://circleci.com/gh/Ankr-network/dccn-daemon/edit#ssh for ssh key in circleci
+# To do: use multi-stage build
 FROM golang:1.10-alpine3.8
 
 ARG URL_BRANCH
