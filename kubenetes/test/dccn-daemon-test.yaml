@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dccn-daemon-test
+  labels:
+    app: dccn-daemon
+spec:  # specification of the pod’s contents
+  restartPolicy: Never
+  imagePullSecrets:
+  - name: aws-ecr
+  containers:
+  - name: dccn-daemon-test
+    image: "815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:dccn_daemon"
+    command: ["/bin/sh","-c"]
+    args: ["dccn-daemon task create deploy-test nginx:1.12 && dccn-daemon task list && dccn-daemon task delete deploy-test"]
