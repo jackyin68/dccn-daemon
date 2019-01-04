@@ -1,10 +1,15 @@
 # UPGRADE: Go Docker image
+# To do: use https://circleci.com/gh/Ankr-network/dccn-daemon/edit#ssh for ssh key in circleci
+# To do: use multi-stage build
 FROM golang:1.10-alpine3.8
 
+ARG URL_BRANCH
+ENV URL_BRANCH ${URL_BRANCH}
 RUN apk update && \
     apk add --no-cache git && \
     apk add --update --no-cache bash && \
     apk add --no-cache openssh
+# To do: use stable version
 RUN go get github.com/golang/dep/cmd/dep
 
 COPY id_rsa /root/.ssh/
@@ -20,4 +25,8 @@ COPY . $GOPATH/src/dccn-daemon
 
 EXPOSE 8080
 
-CMD go run main.go --ip hub.ankr.network --port 50051 --dcName ankr_datacenter1 --kubeconfig ankr.yaml
+# To do: the dc name should be auto generated
+CMD go run main.go \
+    --ip $URL_BRANCH \
+    --port 50051 \
+    --dcName datacenter_1

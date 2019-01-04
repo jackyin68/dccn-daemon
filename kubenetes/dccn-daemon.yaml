@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dccn-daemon-service
+  labels:
+    name: dccn-daemon-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 50051
+      targetPort: 50051
+      protocol: TCP
+  selector:
+    app: dccn-daemon
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: dccn-daemon
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: dccn-daemon
+      labels:
+        app: dccn-daemon
+    spec:
+      imagePullSecrets:
+      - name: dccn-ecr
+      containers:
+      - image: 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn-daemon:feat
+        imagePullPolicy: "Always"
+        name: daemon
