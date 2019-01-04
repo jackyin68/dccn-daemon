@@ -73,7 +73,7 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 	redial := true
 	for {
 		if redial {
-			stream, closeStream, err = dialStream(1000, hubServer)
+			stream, closeStream, err = dialStream(0, hubServer)
 			if err != nil {
 				glog.Errorln("client fail to receive task:", err)
 				continue
@@ -183,10 +183,14 @@ func heartBeat(r *task.Runner, dcName string, stream pb.Dccnk8S_K8TaskClient) er
 	return send(stream, &message)
 }
 
-func dialStream(timeout time.Duration, hubServer string) (stream pb.Dccnk8S_K8TaskClient, cancel func(), err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func dialStream(timeout time.Duration, hubServer string) (pb.Dccnk8S_K8TaskClient, func(), error) {
+	var cancel context.CancelFunc
+	var ctx = context.Background()
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	}
 
-	conn, err := grpc.DialContext(context.Background(), hubServer, grpc.WithInsecure(),
+	conn, err := grpc.DialContext(ctx, hubServer, grpc.WithInsecure(),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{ // TODO: dynamic config in config file
 			Time:    20 * time.Second,
 			Timeout: 5 * time.Second,
@@ -197,9 +201,11 @@ func dialStream(timeout time.Duration, hubServer string) (stream pb.Dccnk8S_K8Ta
 	}
 
 	client := pb.NewDccnk8SClient(conn)
-	stream, err = client.K8Task(ctx)
+	stream, err := client.K8Task(ctx)
 	if err != nil {
-		cancel()
+		if cancel != nil {
+			cancel()
+		}
 		conn.Close()
 		return nil, nil, errors.Wrap(err, "listen k8s task")
 	}
