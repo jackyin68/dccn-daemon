@@ -1,19 +1,5 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: dccn-daemon-service
-  labels:
-    name: dccn-daemon-service
-spec:
-  type: LoadBalancer
-  ports:
-    - port: 50051
-      targetPort: 50051
-      protocol: TCP
-  selector:
-    app: dccn-daemon
----
-apiVersion: extensions/v1beta1
+# UPGRADE: Deployment API version
+apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: dccn-daemon
@@ -21,13 +7,14 @@ spec:
   replicas: 1
   template:
     metadata:
-      name: dccn-daemon
       labels:
         app: dccn-daemon
     spec:
       imagePullSecrets:
-      - name: dccn-ecr
+      - name: aws-ecr
       containers:
-      - image: 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn-daemon:feat
-        imagePullPolicy: "Always"
-        name: daemon
+      - name: dccn-daemon
+        image: "815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn_ecr:dccn_daemon"
+        command: ["dccn-daemon"]
+        args: ["start","datacenter_name","-s","k8s-adapter-service","-p","50051","-n","test-deploy","-S","dccn-tendermint","-v2"]
+        imagePullPolicy: Always

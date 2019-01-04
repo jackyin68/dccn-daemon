@@ -38,7 +38,7 @@
 
 ### native
 
-1. install kubenetes first.
+1. install kubernetes first.
 
 2. `go get github.com/Ankr-daemon/dccn-daemon`
 
@@ -48,10 +48,10 @@
 
 5. use `make` to run test and compile
 
-### kubenetes
+### kubernetes
 
-1. change ankr-hub address in `KubernetesConfigFiles/deployment.yml`
-2. `apply -f KubernetesConfigFiles`
+1. change ankr-hub address in `kubernetes/deployment.yml`
+2. `apply -f kubernetes`
 
 
 ## Objective
@@ -128,7 +128,7 @@ $ kubectl create secret docker-registry aws-ecr --docker-server=https://81528042
 
 Email field here is irrelevant, but is required to run the command for some reason.
 
-4. Deploy the application to Kubernetes using the configuration file in the `KubernetesConfigFiles` directory:
+4. Deploy the application to Kubernetes using the configuration file in the `kubernetes` directory:
 ```
 kubectl create -f deployment.yml
 ```
