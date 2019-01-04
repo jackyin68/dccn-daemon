@@ -1,21 +1,21 @@
-# Set up CI/CD for Ankr daemon
+# Ankr DCCN Daemon
 
-## Functionalities in the first version, 
+## Functionalities in the 1st version
 
-1. talk to cluster master
+1. Communication to cluster master
 
-1. finish the self-registration when boot up.
+2. Finish the self-registration upon booting up
 
-1. add a task
+3. Add a task
 
-1. list tasks
+4. List tasks
 
-1. delete a task
+5. Delete a task
 
 ## Usage
 `./ankr-daemon`
 
-- `create`: create taska (for test)
+- `create`: create task (for test)
 
 - `delete`: delete task (for test)
 
