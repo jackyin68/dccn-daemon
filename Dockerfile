@@ -25,6 +25,7 @@ COPY . $GOPATH/src/dccn-daemon
 
 EXPOSE 8080
 
+# To do: the dc name should be auto generated
 CMD go run main.go \
     --ip $URL_BRANCH \
     --port 50051 \

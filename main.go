@@ -180,9 +180,9 @@ func sendTaskStatus(client pb.Dccnk8SClient, clientset *kubernetes.Clientset) in
 		time.Sleep(ankr_const.HeartBeatInterval * time.Second)
 	}
 
-	// <-waitc
+	<-waitc
 
-	// return 0
+	return 0
 }
 
 func querytask(clientset *kubernetes.Clientset) int {
