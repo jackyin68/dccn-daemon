@@ -263,7 +263,7 @@ func ankr_list_task(clientset *kubernetes.Clientset) string {
 	}
 
 	for _, d := range list.Items {
-		_, err := deploymentsClient.Get(d.Name, metav1.GetOptions{})
+		deploymentsClient.Get(d.Name, metav1.GetOptions{})
 		fmt.Printf("task name: %s, image:%s (%d replicas running)\n\n", d.Name,
 			d.Spec.Template.Spec.Containers[0].Image, *d.Spec.Replicas)
 		result += "Task:" + string(d.Name) + "," + "Image:" + d.Spec.Template.Spec.Containers[0].Image +

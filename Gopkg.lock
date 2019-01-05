@@ -2,15 +2,15 @@
 
 
 [[projects]]
-  branch = "feature/SWDEV-117-ankr_comm"
-  digest = "1:2c3d72c57e5c236aaaa6d6f6998d1364732f0ebe69a8c743100392f5fe973bc8"
+  branch = "develop"
+  digest = "1:3ef72bf7004e8694dba52561dab59cf3a0187f5d1302542a38828e04b807e8ca"
   name = "github.com/Ankr-network/dccn-common"
   packages = [
     ".",
     "protocol/k8s",
   ]
   pruneopts = "UT"
-  revision = "630226b9390dd1500effe9826b5e8ba5bef4226a"
+  revision = "bbf3e6f5f41109030acb1a761cf04824faa0669d"
 
 [[projects]]
   digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
