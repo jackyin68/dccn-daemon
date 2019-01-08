@@ -37,19 +37,43 @@ jobs:
             then
               BRANCH_NAME="stage"
               URL_BRANCH="dc.dccn.ankr.network"
+              k8S_CLUSTER="daemon"
             elif [[ ($BRANCH_NAME == "develop") ]]
             then
               BRANCH_NAME="dev"
               URL_BRANCH="dc-stage.dccn.ankr.network"
+              k8S_CLUSTER="stage.daemon"
             else
               BRANCH_NAME="feat"
               URL_BRANCH="dc-dev.dccn.ankr.network"
+              k8S_CLUSTER="dev.daemon"
             fi
             docker build --build-arg URL_BRANCH=${URL_BRANCH} -t dccn-daemon:$BRANCH_NAME .
             for TAG in $BRANCH_NAME $SHA1_SHORT $BRANCH_NAME$DATE; do
               docker tag dccn-daemon:$BRANCH_NAME $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dccn-daemon:$TAG
               docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dccn-daemon:$TAG
             done
+      - run:
+          name: Install Kops and Kubectl
+          command: |
+            wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
+            chmod +x ./kops
+            sudo mv ./kops /usr/local/bin/kops
+            wget -O kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+            chmod +x ./kubectl
+            sudo mv ./kubectl /usr/local/bin/kubectl
+      - run:
+          name: "Rollout on K8s and test"
+          command: |
+            kops export kubecfg --name $K8S_CLUSTER.k8s.ankr.network --state s3://kops.$K8S_CLUSTER.config
+            kubectl patch deployment/dccn-daemon -p \
+            '{"spec":{"template":{"spec":{"containers":[{"name":"dccn-daemon","image":"$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dccn-daemon:$BRANCH_NAME"}]}}}}'
+            if ! kubectl rollout status deploy/dccn-daemon; then
+              echo "Deploy failed, roll back to previous version"
+              kubectl rollout undo deploy/dccn-daemon 
+            fi
+
+            
 #   test:
 #     docker:
 #   deploy-dev:
