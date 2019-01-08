@@ -62,7 +62,7 @@ jobs:
               docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dccn-daemon:$TAG
             done
 
-            kops export kubecfg --name $K8S_CLUSTER.k8s.ankr.network --state s3://kops.$K8S_CLUSTER.config
+            kops export kubecfg --name ${K8S_CLUSTER}.k8s.ankr.network --state s3://kops.${K8S_CLUSTER}.config
             kubectl patch deployment/dccn-daemon -p \
             '{"spec":{"template":{"spec":{"containers":[{"name":"dccn-daemon","image":"$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dccn-daemon:$BRANCH_NAME"}]}}}}'
             if ! kubectl rollout status deploy/dccn-daemon; then
