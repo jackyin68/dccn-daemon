@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -121,7 +120,6 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			Taskname:   task.Name,
 			Type:       task.Type,
 		}
-		taskName := fmt.Sprintf("%d-%s", task.Taskid, task.Name)
 
 		switch task.Type {
 		case HeartBeat.String():
@@ -129,7 +127,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 
 		case NewTask.String():
 			images := strings.Split(task.Image, ",")
-			if err := r.CreateTasks(taskName, images...); err != nil {
+			if err := r.CreateTasks(task.Name, images...); err != nil {
 				glog.V(1).Infoln(err)
 				message.Status = StartFailure.String()
 				message.Report = err.Error()
@@ -141,7 +139,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 
 		case UpdateTask.String():
 			// FIXME: hard code for no definition in protobuf
-			if err := r.UpdateTask(taskName, task.Image, 2, 80, 80); err != nil {
+			if err := r.UpdateTask(task.Name, task.Image, 2, 80, 80); err != nil {
 				glog.V(1).Infoln(err)
 				message.Status = UpdateFailure.String()
 				message.Report = err.Error()
@@ -152,7 +150,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			send(task.stream, &message)
 
 		case CancelTask.String():
-			if err := r.CancelTask(taskName); err != nil {
+			if err := r.CancelTask(task.Name); err != nil {
 				glog.V(1).Infoln(err)
 				message.Status = CancelFailure.String()
 				message.Report = err.Error()
