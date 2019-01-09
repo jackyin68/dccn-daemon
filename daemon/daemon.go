@@ -121,7 +121,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			Taskname:   task.Name,
 			Type:       task.Type,
 		}
-		taskName := fmt.Sprintf("%s_%d", task.Name, task.Taskid)
+		taskName := fmt.Sprintf("%d-%s", task.Taskid, task.Name)
 
 		switch task.Type {
 		case HeartBeat.String():
