@@ -11,6 +11,8 @@ import (
 //go:generate mockgen -package $GOPACKAGE -destination mock_client.go github.com/Ankr-network/dccn-daemon/task/kube Client
 type Client interface {
 	Deploy(manifest *types.ManifestGroup) error
+	Job(manifest *types.ManifestGroup) error
+	CronJob(manifest *types.ManifestGroup) error
 	TeardownNamespace() error
 
 	ListDeployments() (names, contents []string, err error)
