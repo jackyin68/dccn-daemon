@@ -40,6 +40,30 @@ func (r *Runner) CreateTasks(name string, images ...string) error {
 
 	return r.client.Deploy(group)
 }
+
+func (r *Runner) CreateJobs(name, crontab string, images ...string) error {
+	group := &types.ManifestGroup{}
+
+	count := len(images)
+	switch count {
+	case 0:
+		return errors.New("no image")
+	case 1:
+		group.Services = []*types.ManifestService{types.NewJobManifestService(name, images[0])}
+	default:
+		group.Services = make([]*types.ManifestService, 0, count)
+		for i := range images {
+			nameI := name + "-" + strconv.Itoa(i)
+			group.Services = append(group.Services, types.NewJobManifestService(nameI, images[i]))
+		}
+	}
+
+	if crontab != "" {
+		return r.client.CronJob(group)
+	}
+	return r.client.Job(group)
+}
+
 func (r *Runner) UpdateTask(name, image string, replicas, internalPort, externalPort uint32) error {
 	group := &types.ManifestGroup{}
 	service := types.NewManifestService(name, image)

@@ -15,7 +15,7 @@ RUN go install -v -ldflags="-s -w \
     -X main.date=$(date +%Y-%m-%dT%H:%M:%S%z)"
 
 
-# Build image, alpine offers more possibilities than scratch
+# Build image, alpine provide more possibilities than scratch
 FROM alpine
 
 COPY --from=compiler /go/bin/dccn-daemon /usr/local/bin/dccn-daemon

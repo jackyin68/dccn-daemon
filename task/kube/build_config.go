@@ -8,6 +8,8 @@ import (
 	"github.com/Ankr-network/dccn-daemon/types"
 	uuid "github.com/gofrs/uuid"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	extv1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -62,14 +64,62 @@ func (b *nsBuilder) update(obj *corev1.Namespace) (*corev1.Namespace, error) {
 	return obj, nil
 }
 
-// deployment
-type deploymentBuilder struct {
+type containerBuilder struct {
 	builder
 	service *types.ManifestService
 }
 
+func (b *containerBuilder) container() corev1.Container {
+
+	qcpu := resource.NewScaledQuantity(int64(b.service.Unit.CPU), resource.Milli)
+	qmem := resource.NewQuantity(int64(b.service.Unit.Memory), resource.DecimalSI)
+	qdisk := resource.NewQuantity(int64(b.service.Unit.Disk), resource.DecimalSI)
+
+	kcontainer := corev1.Container{
+		Name:  b.service.Name,
+		Image: b.service.Image,
+		Args:  b.service.Args,
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:              qcpu.DeepCopy(),
+				corev1.ResourceMemory:           qmem.DeepCopy(),
+				corev1.ResourceEphemeralStorage: qdisk.DeepCopy(),
+			},
+			// TODO: this prevents over-subscription.  skip for now.
+			// Requests: corev1.ResourceList{
+			// 	corev1.ResourceCPU:              qcpu.DeepCopy(),
+			// 	corev1.ResourceMemory:           qmem.DeepCopy(),
+			// 	corev1.ResourceEphemeralStorage: qdisk.DeepCopy(),
+			// },
+		},
+	}
+
+	for _, env := range b.service.Env {
+		parts := strings.Split(env, "=")
+		switch len(parts) {
+		case 2:
+			kcontainer.Env = append(kcontainer.Env, corev1.EnvVar{Name: parts[0], Value: parts[1]})
+		case 1:
+			kcontainer.Env = append(kcontainer.Env, corev1.EnvVar{Name: parts[0]})
+		}
+	}
+
+	for _, expose := range b.service.Expose {
+		kcontainer.Ports = append(kcontainer.Ports, corev1.ContainerPort{
+			ContainerPort: int32(expose.Port),
+		})
+	}
+
+	return kcontainer
+}
+
+// deployment
+type deploymentBuilder struct {
+	containerBuilder
+}
+
 func newDeploymentBuilder(namespace string, group *types.ManifestGroup, service *types.ManifestService) *deploymentBuilder {
-	return &deploymentBuilder{builder: builder{namespace, group}, service: service}
+	return &deploymentBuilder{containerBuilder{builder: builder{namespace, group}, service: service}}
 }
 
 func (b *deploymentBuilder) name() string {
@@ -120,50 +170,6 @@ func (b *deploymentBuilder) update(obj *appsv1.Deployment) (*appsv1.Deployment, 
 	return obj, nil
 }
 
-func (b *deploymentBuilder) container() corev1.Container {
-
-	qcpu := resource.NewScaledQuantity(int64(b.service.Unit.CPU), resource.Milli)
-	qmem := resource.NewQuantity(int64(b.service.Unit.Memory), resource.DecimalSI)
-	qdisk := resource.NewQuantity(int64(b.service.Unit.Disk), resource.DecimalSI)
-
-	kcontainer := corev1.Container{
-		Name:  b.service.Name,
-		Image: b.service.Image,
-		Args:  b.service.Args,
-		Resources: corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:              qcpu.DeepCopy(),
-				corev1.ResourceMemory:           qmem.DeepCopy(),
-				corev1.ResourceEphemeralStorage: qdisk.DeepCopy(),
-			},
-			// TODO: this prevents over-subscription.  skip for now.
-			// Requests: corev1.ResourceList{
-			// 	corev1.ResourceCPU:              qcpu.DeepCopy(),
-			// 	corev1.ResourceMemory:           qmem.DeepCopy(),
-			// 	corev1.ResourceEphemeralStorage: qdisk.DeepCopy(),
-			// },
-		},
-	}
-
-	for _, env := range b.service.Env {
-		parts := strings.Split(env, "=")
-		switch len(parts) {
-		case 2:
-			kcontainer.Env = append(kcontainer.Env, corev1.EnvVar{Name: parts[0], Value: parts[1]})
-		case 1:
-			kcontainer.Env = append(kcontainer.Env, corev1.EnvVar{Name: parts[0]})
-		}
-	}
-
-	for _, expose := range b.service.Expose {
-		kcontainer.Ports = append(kcontainer.Ports, corev1.ContainerPort{
-			ContainerPort: int32(expose.Port),
-		})
-	}
-
-	return kcontainer
-}
-
 // service
 type serviceBuilder struct {
 	deploymentBuilder
@@ -171,7 +177,7 @@ type serviceBuilder struct {
 
 func newServiceBuilder(namespace string, group *types.ManifestGroup, service *types.ManifestService) *serviceBuilder {
 	return &serviceBuilder{
-		deploymentBuilder: deploymentBuilder{builder: builder{namespace, group}, service: service},
+		deploymentBuilder: deploymentBuilder{containerBuilder{builder: builder{namespace, group}, service: service}},
 	}
 }
 
@@ -217,7 +223,7 @@ func newIngressBuilder(namespace, host string, group *types.ManifestGroup, servi
 	uid := uuid.Must(uuid.NewV4())
 	expose.Hosts = append(expose.Hosts, fmt.Sprintf("%v.%s.%v", service.Name, uid, host))
 	return &ingressBuilder{
-		deploymentBuilder: deploymentBuilder{builder: builder{namespace, group}, service: service},
+		deploymentBuilder: deploymentBuilder{containerBuilder{builder: builder{namespace, group}, service: service}},
 		expose:            expose,
 	}
 }
@@ -258,4 +264,100 @@ func exposeExternalPort(expose *types.ManifestServiceExpose) int32 {
 		return int32(expose.Port)
 	}
 	return int32(expose.ExternalPort)
+}
+
+type jobBuilder struct {
+	containerBuilder
+}
+
+func newJobBuilder(namespace string, group *types.ManifestGroup, service *types.ManifestService) *jobBuilder {
+	return &jobBuilder{containerBuilder{builder: builder{namespace, group}, service: service}}
+}
+func (b *jobBuilder) name() string {
+	return b.service.Name
+}
+
+func (b *jobBuilder) labels() map[string]string {
+	obj := b.builder.labels()
+	obj[manifestServiceLabelName] = b.service.Name
+	return obj
+}
+
+func (b *jobBuilder) create() (*batchv1.Job, error) {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   b.name(),
+			Labels: b.labels(),
+		},
+		Spec: batchv1.JobSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: b.labels(),
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: b.labels(),
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{b.container()},
+				},
+			},
+		},
+	}, nil
+}
+
+func (b *jobBuilder) update(obj *batchv1.Job) (*batchv1.Job, error) {
+	obj.Labels = b.labels()
+	return obj, nil
+}
+
+type cronJobBuilder struct {
+	containerBuilder
+}
+
+func newcronJobBuilder(namespace string, group *types.ManifestGroup, service *types.ManifestService) *cronJobBuilder {
+	return &cronJobBuilder{containerBuilder{builder: builder{namespace, group}, service: service}}
+}
+func (b *cronJobBuilder) name() string {
+	return b.service.Name
+}
+
+func (b *cronJobBuilder) labels() map[string]string {
+	obj := b.builder.labels()
+	obj[manifestServiceLabelName] = b.service.Name
+	return obj
+}
+
+func (b *cronJobBuilder) create() (*batchv1beta1.CronJob, error) {
+	return &batchv1beta1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   b.name(),
+			Labels: b.labels(),
+		},
+		Spec: batchv1beta1.CronJobSpec{
+			Schedule: "*/1 * * * *",
+			JobTemplate: batchv1beta1.JobTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: b.labels(),
+				},
+				Spec: batchv1.JobSpec{
+					Selector: &metav1.LabelSelector{
+						MatchLabels: b.labels(),
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: b.labels(),
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{b.container()},
+						},
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+func (b *cronJobBuilder) update(obj *batchv1beta1.CronJob) (*batchv1beta1.CronJob, error) {
+	obj.Labels = b.labels()
+	return obj, nil
 }

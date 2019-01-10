@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 
@@ -17,7 +18,11 @@ import (
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/types"
 	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 var (
@@ -48,6 +53,7 @@ func main() {
 	rootCmd.AddCommand(taskCmd())
 	rootCmd.AddCommand(startCmd())
 	rootCmd.AddCommand(blockchainCmd())
+	rootCmd.AddCommand(metricCmd())
 	rootCmd.Execute()
 }
 
@@ -62,6 +68,51 @@ func versionCmd() *cobra.Command {
 		fmt.Println("Commit:", commit)
 		fmt.Println("Compile Date:", date)
 	}
+	return cmd
+}
+
+func metricCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "metric",
+		Short: "metric daemon server",
+		Long:  "metric a long running server to handle ankr-hub requests",
+	}
+
+	openKubeConfig := func(cfgpath string) (*rest.Config, error) {
+		if cfgpath == "" {
+			cfgpath = path.Join(homedir.HomeDir(), ".kube", "config")
+		}
+
+		if _, err := os.Stat(cfgpath); err == nil {
+			cfg, err := clientcmd.BuildConfigFromFlags("", cfgpath)
+			if err != nil {
+				return nil, errors.Wrap(err, cfgpath)
+			}
+			return cfg, nil
+		}
+
+		cfg, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, cfgpath+" fallback in cluster")
+		}
+		return cfg, nil
+	}
+
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		cfg, _ := openKubeConfig(kubeCfg)
+		metc, _ := metricsclient.NewForConfig(cfg)
+
+		list, err := metc.MetricsV1beta1().NodeMetricses().List(metav1.ListOptions{})
+		exitOnErr(err)
+		data, _ := json.MarshalIndent(list, "", "    ")
+		fmt.Println(string(data))
+
+		list2, err := metc.MetricsV1beta1().PodMetricses("kube-system").List(metav1.ListOptions{})
+		exitOnErr(err)
+		data, _ = json.MarshalIndent(list2, "", "    ")
+		fmt.Println(string(data))
+	}
+
 	return cmd
 }
 
@@ -129,6 +180,19 @@ func taskCmd() *cobra.Command {
 			exitOnErr(err)
 
 			exitOnErr(runner.CreateTasks(args[0], args[1:]...))
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "job <name> <images>",
+		Short: "create job task",
+		Long:  "create a new job task with your images a new job task with your images",
+		Args:  cobra.MinimumNArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			exitOnErr(err)
+
+			exitOnErr(runner.CreateJobs(args[0], "cron" /*FIXME*/, args[1:]...))
 		},
 	})
 

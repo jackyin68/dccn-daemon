@@ -34,6 +34,20 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
+// CronJob mocks base method
+func (m *MockClient) CronJob(arg0 *types.ManifestGroup) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CronJob", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CronJob indicates an expected call of CronJob
+func (mr *MockClientMockRecorder) CronJob(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CronJob", reflect.TypeOf((*MockClient)(nil).CronJob), arg0)
+}
+
 // Deploy mocks base method
 func (m *MockClient) Deploy(arg0 *types.ManifestGroup) error {
 	m.ctrl.T.Helper()
@@ -61,6 +75,20 @@ func (m *MockClient) Inventory() ([]Node, error) {
 func (mr *MockClientMockRecorder) Inventory() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Inventory", reflect.TypeOf((*MockClient)(nil).Inventory))
+}
+
+// Job mocks base method
+func (m *MockClient) Job(arg0 *types.ManifestGroup) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Job", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Job indicates an expected call of Job
+func (mr *MockClientMockRecorder) Job(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Job", reflect.TypeOf((*MockClient)(nil).Job), arg0)
 }
 
 // ListDeployments mocks base method

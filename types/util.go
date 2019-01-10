@@ -28,3 +28,19 @@ func NewManifestService(name, image string) *ManifestService {
 		}},
 	}
 }
+
+//NewJobManifestService is a easy way to create a manifest service for job
+func NewJobManifestService(name, image string) *ManifestService {
+	return &ManifestService{
+		Name:  name,
+		Image: image,
+		Args:  []string{},
+		Env:   []string{},
+		Unit: &ResourceUnit{
+			CPU:    unit.Core / 10,
+			Memory: 128 * unit.Mi,
+			Disk:   256 * unit.Mi,
+		},
+		Count: 1,
+	}
+}
