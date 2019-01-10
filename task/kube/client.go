@@ -130,6 +130,37 @@ func (c *client) Deploy(group *types.ManifestGroup) error {
 	return nil
 }
 
+func (c *client) Job(group *types.ManifestGroup) error {
+	if err := applyNS(c.kc, newNSBuilder(c.ns, group)); err != nil {
+		return errors.Wrap(err, "applying namespace")
+	}
+	if err := cleanupStaleResources(c.kc, c.ns, group); err != nil {
+		return errors.Wrap(err, "cleaning stale resources")
+	}
+
+	for _, service := range group.Services {
+		if err := applyJob(c.kc, newJobBuilder(c.ns, group, service)); err != nil {
+			return errors.Wrap(err, "applying deployment")
+		}
+	}
+	return nil
+}
+func (c *client) CronJob(group *types.ManifestGroup) error {
+	if err := applyNS(c.kc, newNSBuilder(c.ns, group)); err != nil {
+		return errors.Wrap(err, "applying namespace")
+	}
+	if err := cleanupStaleResources(c.kc, c.ns, group); err != nil {
+		return errors.Wrap(err, "cleaning stale resources")
+	}
+
+	for _, service := range group.Services {
+		if err := applyCronJob(c.kc, newcronJobBuilder(c.ns, group, service)); err != nil {
+			return errors.Wrap(err, "applying deployment")
+		}
+	}
+	return nil
+}
+
 func (c *client) TeardownNamespace() error {
 	return c.kc.CoreV1().Namespaces().Delete(c.ns, &metav1.DeleteOptions{})
 }

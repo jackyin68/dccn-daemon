@@ -53,6 +53,53 @@ func applyDeployment(kc kubernetes.Interface, b *deploymentBuilder) error {
 	return err
 }
 
+func applyJob(kc kubernetes.Interface, b *jobBuilder) error {
+	obj, err := kc.BatchV1().Jobs(b.ns()).Get(b.name(), metav1.GetOptions{})
+	switch {
+	case err == nil && b.service.Count == 0:
+		err = kc.BatchV1().Jobs(b.ns()).Delete(b.service.Name, &metav1.DeleteOptions{})
+		err = errors.Wrap(err, "delete")
+	case err == nil:
+		obj, err = b.update(obj)
+		if err == nil {
+			_, err = kc.BatchV1().Jobs(b.ns()).Update(obj)
+			err = errors.Wrap(err, "update")
+		}
+	case k8sErr.IsNotFound(err):
+		obj, err = b.create()
+		if err == nil {
+			_, err = kc.BatchV1().Jobs(b.ns()).Create(obj)
+			err = errors.Wrap(err, "create")
+		}
+	default:
+		err = errors.Wrap(err, "get")
+	}
+	return err
+}
+func applyCronJob(kc kubernetes.Interface, b *cronJobBuilder) error {
+	obj, err := kc.BatchV1beta1().CronJobs(b.ns()).Get(b.name(), metav1.GetOptions{})
+	switch {
+	case err == nil && b.service.Count == 0:
+		err = kc.BatchV1beta1().CronJobs(b.ns()).Delete(b.service.Name, &metav1.DeleteOptions{})
+		err = errors.Wrap(err, "delete")
+	case err == nil:
+		obj, err = b.update(obj)
+		if err == nil {
+			_, err = kc.BatchV1beta1().CronJobs(b.ns()).Update(obj)
+			err = errors.Wrap(err, "update")
+		}
+	case k8sErr.IsNotFound(err):
+		obj, err = b.create()
+		if err == nil {
+			_, err = kc.BatchV1beta1().CronJobs(b.ns()).Create(obj)
+			err = errors.Wrap(err, "create")
+		}
+	default:
+		err = errors.Wrap(err, "get")
+	}
+	return err
+}
+
 func applyService(kc kubernetes.Interface, b *serviceBuilder) error {
 	obj, err := kc.CoreV1().Services(b.ns()).Get(b.name(), metav1.GetOptions{})
 	switch {
