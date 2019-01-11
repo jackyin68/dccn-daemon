@@ -176,10 +176,10 @@ func taskCmd() *cobra.Command {
 		Long:  "create a new deploy task with your images",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewClient(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			exitOnErr(runner.CreateTasks(args[0], args[1:]...))
+			exitOnErr(client.CreateTasks(args[0], args[1:]...))
 		},
 	})
 
@@ -189,10 +189,10 @@ func taskCmd() *cobra.Command {
 		Long:  "create a new job task with your images a new job task with your images",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewClient(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			exitOnErr(runner.CreateJobs(args[0], "cron" /*FIXME*/, args[1:]...))
+			exitOnErr(client.CreateJobs(args[0], "cron" /*FIXME*/, args[1:]...))
 		},
 	})
 
@@ -205,10 +205,10 @@ func taskCmd() *cobra.Command {
 			replicas, err := strconv.ParseUint(args[2], 10, 32)
 			exitOnErr(err)
 
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewClient(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			exitOnErr(runner.UpdateTask(args[0], args[1], uint32(replicas), 80, 80))
+			exitOnErr(client.UpdateTask(args[0], args[1], uint32(replicas), 80, 80))
 		},
 	})
 
@@ -218,10 +218,10 @@ func taskCmd() *cobra.Command {
 		Long:  "delete a exist task",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewClient(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			exitOnErr(runner.CancelTask(args[0]))
+			exitOnErr(client.CancelTask(args[0]))
 		},
 	})
 
@@ -230,10 +230,10 @@ func taskCmd() *cobra.Command {
 		Short: "list tasks",
 		Long:  "list all tasks running",
 		Run: func(cmd *cobra.Command, args []string) {
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewClient(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			tasks, err := runner.ListTask()
+			tasks, err := client.ListTask()
 			exitOnErr(err)
 
 			for _, task := range tasks {
@@ -266,10 +266,10 @@ func blockchainCmd() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			// collect data
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			clientTask, err := task.NewClient(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			metering, err := runner.Metering()
+			metering, err := clientTask.Metering()
 			exitOnErr(err)
 
 			data, err := json.Marshal(metering)

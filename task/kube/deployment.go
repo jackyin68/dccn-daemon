@@ -21,15 +21,13 @@ func NewDeployment(namespace string, service *types.ManifestService) Kube {
 		return mockKube
 	}
 
-	k := &Deployment{
+	return &Deployment{
 		common: &common{
 			namespace: namespace,
 			service:   service,
 		},
 		service: service,
 	}
-	k.build()
-	return k
 }
 
 func (k *Deployment) build() {
@@ -57,34 +55,41 @@ func (k *Deployment) build() {
 }
 
 func (k *Deployment) Create(kc kubernetes.Interface) error {
+	k.build()
 	_, err := kc.AppsV1().Deployments(k.ns()).Create(k.Deployment)
 	return errors.Wrap(err, "create deployment")
 }
 
-func (k *Deployment) Update(kc kubernetes.Interface) (err error) {
-	defer errors.Wrap(err, "update deployment")
+func (k *Deployment) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+	defer func() { err = errors.Wrap(err, "update deployment") }()
 
 	obj, err := kc.AppsV1().Deployments(k.ns()).Get(k.name(), metav1.GetOptions{})
-	if k.needCreate(err) {
-		k.build()
-		return k.Create(kc)
-	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	k.Deployment = obj.DeepCopy()
 	replicas := int32(k.service.Count)
-	obj.Labels = k.labels()
-	obj.Spec.Selector.MatchLabels = k.labels()
-	obj.Spec.Replicas = &replicas
-	obj.Spec.Template.Labels = k.labels()
-	obj.Spec.Template.Spec.Containers = []corev1.Container{k.container()}
+	k.Deployment.Labels = k.labels()
+	k.Deployment.Spec.Selector.MatchLabels = k.labels()
+	k.Deployment.Spec.Replicas = &replicas
+	k.Deployment.Spec.Template.Labels = k.labels()
+	k.Deployment.Spec.Template.Spec.Containers = []corev1.Container{k.container()}
 
-	k.Deployment = obj
 	_, err = kc.AppsV1().Deployments(k.ns()).Update(k.Deployment)
-	return err
-}
+	if err != nil {
+		return nil, err
+	}
 
+	return func(kc kubernetes.Interface) error {
+		_, err = kc.AppsV1().Deployments(k.ns()).Update(obj)
+		return err
+	}, nil
+}
+func (k *Deployment) Delete(kc kubernetes.Interface) error {
+	err := kc.AppsV1().Deployments(k.ns()).Delete(k.name(), &metav1.DeleteOptions{})
+	return errors.Wrap(err, "delete deployment")
+}
 func (k *Deployment) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) error {
 	err := kc.AppsV1().Deployments(k.ns()).DeleteCollection(&metav1.DeleteOptions{}, selector)
 	return errors.Wrap(err, "delete deployment collection")

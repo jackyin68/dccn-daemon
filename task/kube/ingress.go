@@ -21,15 +21,13 @@ func NewIngress(namespace string, service *types.ManifestService, expose *types.
 		return mockKube
 	}
 
-	k := &Ingress{
+	return &Ingress{
 		common: &common{
 			namespace: namespace,
 			service:   service,
 		},
 		expose: expose,
 	}
-	k.build()
-	return k
 }
 
 func (k *Ingress) build() {
@@ -56,31 +54,38 @@ func (k *Ingress) rules() []extv1.IngressRule {
 }
 
 func (k *Ingress) Create(kc kubernetes.Interface) error {
+	k.build()
 	_, err := kc.ExtensionsV1beta1().Ingresses(k.ns()).Create(k.Ingress)
 	return errors.Wrap(err, "create ingress")
 }
 
-func (k *Ingress) Update(kc kubernetes.Interface) (err error) {
-	defer errors.Wrap(err, "update ingress")
+func (k *Ingress) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+	defer func() { err = errors.Wrap(err, "update ingress") }()
 
 	obj, err := kc.ExtensionsV1beta1().Ingresses(k.ns()).Get(k.name(), metav1.GetOptions{})
-	if k.needCreate(err) {
-		k.build()
-		return k.Create(kc)
-	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	obj.Labels = k.labels()
-	obj.Spec.Backend.ServicePort = intstr.FromInt(int(exposeExternalPort(k.expose)))
-	obj.Spec.Rules = k.rules()
+	k.Ingress = obj.DeepCopy()
+	k.Ingress.Labels = k.labels()
+	k.Ingress.Spec.Backend.ServicePort = intstr.FromInt(int(exposeExternalPort(k.expose)))
+	k.Ingress.Spec.Rules = k.rules()
 
-	k.Ingress = obj
 	_, err = kc.ExtensionsV1beta1().Ingresses(k.ns()).Update(k.Ingress)
-	return err
-}
+	if err != nil {
+		return nil, err
+	}
 
+	return func(kc kubernetes.Interface) error {
+		_, err = kc.ExtensionsV1beta1().Ingresses(k.ns()).Update(obj)
+		return err
+	}, nil
+}
+func (k *Ingress) Delete(kc kubernetes.Interface) error {
+	err := kc.ExtensionsV1beta1().Ingresses(k.ns()).Delete(k.name(), &metav1.DeleteOptions{})
+	return errors.Wrap(err, "delete ingress")
+}
 func (k *Ingress) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) error {
 	err := kc.ExtensionsV1beta1().Ingresses(k.ns()).DeleteCollection(&metav1.DeleteOptions{}, selector)
 	return errors.Wrap(err, "delete ingress collection")

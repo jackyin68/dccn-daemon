@@ -5,9 +5,10 @@ import (
 
 	"github.com/Ankr-network/dccn-daemon/types"
 	corev1 "k8s.io/api/core/v1"
-	k8sErr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -17,16 +18,15 @@ var mockKube Kube
 // Kubenetes actions interface
 //go:generate mockgen -package $GOPACKAGE -destination mock_kube.go github.com/Ankr-network/dccn-daemon/task/kube Kube
 type Kube interface {
-	Create(kubernetes.Interface) error
-	Update(kubernetes.Interface) error
-	DeleteCollection(kubernetes.Interface, metav1.ListOptions) error
-	List(kubernetes.Interface, interface{}) error
+	Create(kc kubernetes.Interface) (err error)
+	Delete(kc kubernetes.Interface) (err error)
+	Update(kc kubernetes.Interface) (rollback func(kubernetes.Interface) error, err error)
+	DeleteCollection(kc kubernetes.Interface, options metav1.ListOptions) (err error)
+	List(kc kubernetes.Interface, result interface{}) (err error)
 }
 
-const (
-	managedLabelName         = "ankr.network"
-	manifestServiceLabelName = "ankr.network/manifest-service"
-)
+const managedLabelName = "ankr.network"
+const manifestServiceLabelName = "ankr.network/manifest-service"
 
 type common struct {
 	namespace string
@@ -44,9 +44,7 @@ func (c *common) labels() map[string]string {
 		managedLabelName: "true",
 	}
 }
-func (c *common) needCreate(err error) bool {
-	return k8sErr.IsNotFound(err)
-}
+
 func (c *common) container() corev1.Container {
 	qcpu := resource.NewScaledQuantity(int64(c.service.Unit.CPU), resource.Milli)
 	qmem := resource.NewQuantity(int64(c.service.Unit.Memory), resource.DecimalSI)
@@ -89,4 +87,9 @@ func exposeExternalPort(expose *types.ManifestServiceExpose) int32 {
 		return int32(expose.Port)
 	}
 	return int32(expose.ExternalPort)
+}
+
+func Selector() string {
+	req, _ := labels.NewRequirement(managedLabelName, selection.Equals, []string{"true"})
+	return labels.NewSelector().Add(*req).String()
 }

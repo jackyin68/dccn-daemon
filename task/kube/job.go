@@ -21,15 +21,13 @@ func NewJob(namespace string, service *types.ManifestService) Kube {
 		return mockKube
 	}
 
-	k := &Job{
+	return &Job{
 		common: &common{
 			namespace: namespace,
 			service:   service,
 		},
 		service: service,
 	}
-	k.build()
-	return k
 }
 
 func (k *Job) build() {
@@ -55,29 +53,36 @@ func (k *Job) build() {
 }
 
 func (k *Job) Create(kc kubernetes.Interface) error {
+	k.build()
 	_, err := kc.BatchV1().Jobs(k.ns()).Create(k.Job)
 	return errors.Wrap(err, "create job")
 }
 
-func (k *Job) Update(kc kubernetes.Interface) (err error) {
-	defer errors.Wrap(err, "update job")
+func (k *Job) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+	defer func() { err = errors.Wrap(err, "update job") }()
 
 	obj, err := kc.BatchV1().Jobs(k.ns()).Get(k.name(), metav1.GetOptions{})
-	if k.needCreate(err) {
-		k.build()
-		return k.Create(kc)
-	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	obj.Labels = k.labels()
+	k.Job = obj.DeepCopy()
+	k.Job.Labels = k.labels()
 
-	k.Job = obj
 	_, err = kc.BatchV1().Jobs(k.ns()).Update(k.Job)
-	return err
-}
+	if err != nil {
+		return nil, err
+	}
 
+	return func(kc kubernetes.Interface) error {
+		_, err = kc.BatchV1().Jobs(k.ns()).Update(obj)
+		return err
+	}, nil
+}
+func (k *Job) Delete(kc kubernetes.Interface) error {
+	err := kc.BatchV1().Jobs(k.ns()).Delete(k.name(), &metav1.DeleteOptions{})
+	return errors.Wrap(err, "delete job")
+}
 func (k *Job) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) error {
 	err := kc.BatchV1().Jobs(k.ns()).DeleteCollection(&metav1.DeleteOptions{}, selector)
 	return errors.Wrap(err, "delete collection job")
