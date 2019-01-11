@@ -21,6 +21,7 @@ type taskCtx struct {
 	ctx    context.Context
 }
 
+// ServeTask will serve the task metering with blockchain logic
 func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
 	runner, err := task.NewRunner(cfgpath, namespace, ingressHost)
@@ -30,7 +31,7 @@ func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 
 	go taskMetering(runner, dcName, namespace, tendermintServer, tendermintWsEndpoint)
 
-	var taskCh = make(chan *taskCtx) // block chan, serve single task one time
+	var taskCh = make(chan *taskCtx) // block chain, serve single task one time
 	go taskOperator(runner, dcName, taskCh)
 	return taskReciver(runner, hubServer, dcName, taskCh)
 }

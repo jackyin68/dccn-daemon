@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// Broadcast will marshal and push the obj to the tendermint block
 func Broadcast(server, wsEndpoint, key string, obj interface{}) error {
 	data, err := json.Marshal(obj)
 	if err != nil {
