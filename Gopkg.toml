@@ -1,27 +1,43 @@
+# Gopkg.toml example
+#
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
 [[constraint]]
-  branch = "develop"
   name = "github.com/Ankr-network/dccn-common"
-
-[[constraint]]
-  branch = "master"
-  name = "golang.org/x/net"
-
-[[constraint]]
-  name = "google.golang.org/grpc"
-  version = "1.16.0"
-
-[[constraint]]
-  name = "k8s.io/api"
-  version = "kubernetes-1.10.0"
-
-[[constraint]]
-  name = "k8s.io/apimachinery"
-  version = "kubernetes-1.10.0"
-
-[[constraint]]
-  name = "k8s.io/client-go"
-  version = "7.0.0"
+  revision = "bbf3e6f5f41109030acb1a761cf04824faa0669d" # branch = "develop"
 
 [prune]
+  non-go = true
   go-tests = true
   unused-packages = true
+
+  [[prune.project]]
+    name="github.com/gogo/protobuf"
+    non-go = false
+    unused-packages = false
+  [[prune.project]]
+    name="github.com/grpc-ecosystem/grpc-gateway"
+    non-go = false
+    unused-packages = false
