@@ -3,6 +3,7 @@ package daemon
 //go:generate stringer -type taskType
 type taskType int
 
+// To do: move these definition into DCCN-common
 const (
 	NewTask taskType = iota
 	UpdateTask
@@ -23,6 +24,7 @@ const (
 	UpdateSuccess
 )
 
+// TendermintKey will create the key to be used in the tendermint
 func TendermintKey(dcName, namespace string) string {
 	return dcName + ":" + namespace
 }
