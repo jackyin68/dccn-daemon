@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	pb "github.com/Ankr-network/dccn-common/protocol/k8s"
 	"github.com/Ankr-network/dccn-daemon/task"
-	pb "github.com/Ankr-network/dccn-rpc/protocol_new/k8s"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"

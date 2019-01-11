@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  branch = "feature/swdev-110-ankr_rpc"
-  digest = "1:6c938f98924d9147875ff227b75e035e1ee869ec35bee8c1566f3db1126012e8"
-  name = "github.com/Ankr-network/dccn-rpc"
-  packages = ["protocol_new/k8s"]
+  branch = "develop"
+  digest = "1:db422d1cceac282bc8ea9e0038200cf2b28495a50393415b2b8ed8d742ddb753"
+  name = "github.com/Ankr-network/dccn-common"
+  packages = ["protocol/k8s"]
   pruneopts = "NUT"
-  revision = "2c54784f10b4e9c36b6106c4621d9021a7ebeae2"
+  revision = "bbf3e6f5f41109030acb1a761cf04824faa0669d"
 
 [[projects]]
   branch = "master"
@@ -810,7 +810,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Ankr-network/dccn-rpc/protocol_new/k8s",
+    "github.com/Ankr-network/dccn-common/protocol/k8s",
     "github.com/gofrs/uuid",
     "github.com/gogo/protobuf/gogoproto",
     "github.com/golang/glog",

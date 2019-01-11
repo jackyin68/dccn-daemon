@@ -25,8 +25,8 @@
 #   unused-packages = true
 
 [[constraint]]
-  branch = "feature/swdev-110-ankr_rpc"
-  name = "github.com/Ankr-network/dccn-rpc"
+  name = "github.com/Ankr-network/dccn-common"
+  revision = "bbf3e6f5f41109030acb1a761cf04824faa0669d" # branch = "develop"
 
 [prune]
   non-go = true
