@@ -20,15 +20,13 @@ func NewNamespace(namespace string, service *types.ManifestService) Kube {
 		return mockKube
 	}
 
-	k := &Namespace{
+	return &Namespace{
 		common: &common{
 			namespace: namespace,
 			service:   service,
 		},
 		service: service,
 	}
-	k.build()
-	return k
 }
 
 func (k *Namespace) build() {
@@ -45,34 +43,35 @@ func (k *Namespace) Create(kc kubernetes.Interface) error {
 	return errors.Wrap(err, "create namespace")
 }
 
-func (k *Namespace) Update(kc kubernetes.Interface) (err error) {
-	defer errors.Wrap(err, "update namespace")
+func (k *Namespace) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+	defer func() { err = errors.Wrap(err, "update namespace") }()
 
 	obj, err := kc.CoreV1().Namespaces().Get(k.name(), metav1.GetOptions{})
-	if k.needCreate(err) {
-		k.build()
-		return k.Create(kc)
-	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	obj.Name = k.ns()
-	obj.Labels = k.labels()
+	k.Namespace = obj.DeepCopy()
+	k.Namespace.Name = k.ns()
+	k.Namespace.Labels = k.labels()
 
-	k.Namespace = obj
 	_, err = kc.CoreV1().Namespaces().Update(k.Namespace)
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	return func(kc kubernetes.Interface) error {
+		_, err = kc.CoreV1().Namespaces().Update(obj)
+		return err
+	}, nil
 }
 
+func (k *Namespace) Delete(kc kubernetes.Interface) error {
+	err := kc.CoreV1().Namespaces().Delete(k.name(), &metav1.DeleteOptions{})
+	return errors.Wrapf(err, "delete namespace(%s)", k.name())
+}
 func (k *Namespace) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) error {
-	panic("delete namespace collection is dangerous")
-}
-
-// Delete is a api not in Kube definition
-func (k *Namespace) Delete(kc kubernetes.Interface, namespace string) error {
-	err := kc.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{})
-	return errors.Wrapf(err, "delete namespace(%s)", namespace)
+	return errors.New("delete namespace collection is dangerous")
 }
 
 func (k *Namespace) List(kc kubernetes.Interface, result interface{}) error {
