@@ -25,23 +25,23 @@ type taskCtx struct {
 // ServeTask will serve the task metering with blockchain logic
 func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
-	runner, err := task.NewRunner(cfgpath, namespace, ingressHost)
+	client, err := task.NewClient(cfgpath, namespace, ingressHost)
 	if err != nil {
 		return err
 	}
 
-	go taskMetering(runner, dcName, namespace, tendermintServer, tendermintWsEndpoint)
+	go taskMetering(client, dcName, namespace, tendermintServer, tendermintWsEndpoint)
 
-	var taskCh = make(chan *taskCtx) // block chain, serve single task one time
-	go taskOperator(runner, dcName, taskCh)
-	return taskReciver(runner, hubServer, dcName, taskCh)
+	var taskCh = make(chan *taskCtx) // block chan, serve single task one time
+	go taskOperator(client, dcName, taskCh)
+	return taskReciver(client, hubServer, dcName, taskCh)
 }
 
-func taskMetering(r *task.Runner, dcName, namespace, server, wsEndpoint string) {
+func taskMetering(c *task.Client, dcName, namespace, server, wsEndpoint string) {
 	once := &sync.Once{}
 	tick := time.Tick(30 * time.Second)
 	for range tick {
-		metering, err := r.Metering()
+		metering, err := c.Metering()
 		if err != nil {
 			glog.Errorln("client fail to get metering:", err)
 			continue
@@ -62,7 +62,7 @@ func taskMetering(r *task.Runner, dcName, namespace, server, wsEndpoint string) 
 	}
 }
 
-func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCtx) error {
+func taskReciver(c *task.Client, hubServer, dcName string, taskCh chan<- *taskCtx) error {
 	// try once to test connection, all tests should finish in 5s
 	stream, closeStream, err := dialStream(5*time.Second, hubServer)
 	if err != nil {
@@ -82,7 +82,7 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 			}
 
 			// regist dc
-			if err := heartBeat(r, dcName, stream); err != nil {
+			if err := heartBeat(c, dcName, stream); err != nil {
 				closeStream()
 			} else {
 				redial = false
@@ -110,7 +110,7 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 	}
 }
 
-func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
+func taskOperator(c *task.Client, dcName string, taskCh <-chan *taskCtx) {
 	glog.Infoln("Task operator started.")
 	for {
 		chTask, ok := <-taskCh
@@ -122,12 +122,12 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 
 		switch chTask.EventType {
 		case common_proto.Operation_HEARTBEAT:
-			heartBeat(r, dcName, chTask.stream)
+			heartBeat(c, dcName, chTask.stream)
 
 		case common_proto.Operation_TASK_CREATE:
 			images := strings.Split(task.Image, ",")
 			task.Status = common_proto.TaskStatus_RUNNING
-			if err := r.CreateTasks(task.Name, images...); err != nil {
+			if err := c.CreateTasks(task.Name, images...); err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_START_FAILED
 				chTask.Report = err.Error()
@@ -140,7 +140,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 		case common_proto.Operation_TASK_UPDATE:
 			// FIXME: hard code for no definition in protobuf
 			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
-			if err := r.UpdateTask(task.Name, task.Image, 2, 80, 80); err != nil {
+			if err := c.UpdateTask(task.Name, task.Image, 2, 80, 80); err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_UPDATE_FAILED
 				chTask.Report = err.Error()
@@ -153,7 +153,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 
 		case common_proto.Operation_TASK_CANCEL:
 			task.Status = common_proto.TaskStatus_CANCELLED
-			if err := r.CancelTask(task.Name); err != nil {
+			if err := c.CancelTask(task.Name); err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_CANCEL_FAILED
 				chTask.Report = err.Error()
@@ -167,7 +167,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 	}
 }
 
-func heartBeat(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
+func heartBeat(c *task.Client, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
 	dataCenter := common_proto.DataCenter{
 		Name: dcName,
 	}
@@ -179,7 +179,7 @@ func heartBeat(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_Serve
 		},
 	}
 
-	tasks, err := r.ListTask()
+	tasks, err := c.ListTask()
 	if err != nil {
 		glog.V(1).Infoln(err)
 		dataCenter.Report = err.Error()

@@ -23,15 +23,13 @@ func NewService(namespace string, service *types.ManifestService, expose *types.
 		return mockKube
 	}
 
-	k := &Service{
+	return &Service{
 		common: &common{
 			namespace: namespace,
 			service:   service,
 		},
 		expose: expose,
 	}
-	k.build()
-	return k
 }
 
 func (k *Service) build() {
@@ -59,33 +57,40 @@ func (k *Service) ports() []corev1.ServicePort {
 }
 
 func (k *Service) Create(kc kubernetes.Interface) error {
+	k.build()
 	_, err := kc.CoreV1().Services(k.ns()).Create(k.Service)
 	return errors.Wrap(err, "create service")
 }
 
-func (k *Service) Update(kc kubernetes.Interface) (err error) {
-	defer errors.Wrap(err, "update service")
+func (k *Service) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+	defer func() { err = errors.Wrap(err, "update service") }()
 
 	obj, err := kc.CoreV1().Services(k.ns()).Get(k.name(), metav1.GetOptions{})
-	if k.needCreate(err) {
-		k.build()
-		return k.Create(kc)
-	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	obj.Labels = k.labels()
-	obj.Spec.Selector = k.labels()
-	obj.Spec.Ports = k.ports()
+	k.Service = obj.DeepCopy()
+	k.Service.Labels = k.labels()
+	k.Service.Spec.Selector = k.labels()
+	k.Service.Spec.Ports = k.ports()
 
-	k.Service = obj
 	_, err = kc.CoreV1().Services(k.ns()).Update(k.Service)
-	return err
-}
+	if err != nil {
+		return nil, err
+	}
 
+	return func(kc kubernetes.Interface) error {
+		_, err = kc.CoreV1().Services(k.ns()).Update(obj)
+		return err
+	}, nil
+}
+func (k *Service) Delete(kc kubernetes.Interface) error {
+	err := kc.CoreV1().Services(k.ns()).Delete(k.name(), &metav1.DeleteOptions{})
+	return errors.Wrap(err, "delete service")
+}
 func (k *Service) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) (err error) {
-	defer errors.Wrap(err, "delete service collection")
+	defer func() { err = errors.Wrap(err, "delete service collection") }()
 
 	services, err := kc.CoreV1().Services(k.ns()).List(selector)
 	if err != nil {

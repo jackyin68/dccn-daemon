@@ -1,71 +1,69 @@
 package task
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"github.com/Ankr-network/dccn-daemon/task/kube"
 	"github.com/Ankr-network/dccn-daemon/types"
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
-type Runner struct {
-	client kube.Client
-}
-
-func NewRunner(cfgpath, namespace, ingressHost string) (*Runner, error) {
-	client, err := kube.NewClient(cfgpath, namespace, ingressHost)
-	if err != nil {
-		return nil, errors.Wrap(err, "new runner")
-	}
-	return &Runner{client: client}, nil
-}
-
-func (r *Runner) CreateTasks(name string, images ...string) error {
-	group := &types.ManifestGroup{}
+func (c *Client) CreateTasks(name string, images ...string) error {
+	kubes := []kube.Kube{kube.NewPrepare(c.ns, &types.ManifestService{Name: name})}
 
 	count := len(images)
 	switch count {
 	case 0:
 		return errors.New("no image")
 	case 1:
-		group.Services = []*types.ManifestService{types.NewManifestService(name, images[0])}
+		service := types.NewManifestService(name, images[0])
+		kubes = append(kubes, kube.NewDeployment(c.ns, service))
 	default:
-		group.Services = make([]*types.ManifestService, 0, count)
 		for i := range images {
 			nameI := name + "-" + strconv.Itoa(i)
-			group.Services = append(group.Services, types.NewManifestService(nameI, images[i]))
+			service := types.NewManifestService(nameI, images[i])
+			kubes = append(kubes, kube.NewDeployment(c.ns, service))
 		}
 	}
 
-	return r.client.Deploy(group)
+	return c.run(kubes)
 }
 
-func (r *Runner) CreateJobs(name, crontab string, images ...string) error {
-	group := &types.ManifestGroup{}
+func (c *Client) CreateJobs(name, crontab string, images ...string) error {
+	kubes := []kube.Kube{kube.NewPrepare(c.ns, &types.ManifestService{Name: name})}
 
 	count := len(images)
 	switch count {
 	case 0:
 		return errors.New("no image")
 	case 1:
-		group.Services = []*types.ManifestService{types.NewJobManifestService(name, images[0])}
+		service := types.NewManifestService(name, images[0])
+		if crontab == "" {
+			kubes = append(kubes, kube.NewJob(c.ns, service))
+		} else {
+			kubes = append(kubes, kube.NewCronJob(c.ns, service, crontab))
+		}
 	default:
-		group.Services = make([]*types.ManifestService, 0, count)
 		for i := range images {
 			nameI := name + "-" + strconv.Itoa(i)
-			group.Services = append(group.Services, types.NewJobManifestService(nameI, images[i]))
+			service := types.NewManifestService(nameI, images[i])
+			if crontab == "" {
+				kubes = append(kubes, kube.NewJob(c.ns, service))
+			} else {
+				kubes = append(kubes, kube.NewCronJob(c.ns, service, crontab))
+			}
 		}
 	}
 
-	if crontab != "" {
-		return r.client.CronJob(group)
-	}
-	return r.client.Job(group)
+	return c.run(kubes)
 }
 
-func (r *Runner) UpdateTask(name, image string, replicas, internalPort, externalPort uint32) error {
-	group := &types.ManifestGroup{}
+func (c *Client) UpdateTask(name, image string, replicas, internalPort, externalPort uint32) error {
+	kubes := []kube.Kube{kube.NewPrepare(c.ns, &types.ManifestService{Name: name})}
+
 	service := types.NewManifestService(name, image)
 	service.Count = replicas
 	if internalPort != 0 && externalPort != 0 {
@@ -78,26 +76,51 @@ func (r *Runner) UpdateTask(name, image string, replicas, internalPort, external
 			Hosts:        []string{},
 		}}
 	}
-	group.Services = []*types.ManifestService{service}
 
-	return r.client.Deploy(group)
+	kubes = append(kubes, kube.NewDeployment(c.ns, service))
+	kubes = append(kubes, kube.NewService(c.ns, service, service.Expose[0]))
+	kubes = append(kubes, kube.NewIngress(c.ns, service, service.Expose[0]))
+	return c.run(kubes)
 }
 
-func (r *Runner) CancelTask(name string) error {
-	group := &types.ManifestGroup{}
+func (c *Client) CancelTask(name string) error {
 	service := types.NewManifestService(name, "")
 	service.Count = 0
-	service.Expose = []*types.ManifestServiceExpose{}
-	group.Services = []*types.ManifestService{service}
+	expose := &types.ManifestServiceExpose{}
 
-	return r.client.Deploy(group)
+	if err := kube.NewDeployment(c.ns, service).Delete(c.kc); err != nil {
+		return err
+	}
+	if err := kube.NewService(c.ns, service, expose).Delete(c.kc); err != nil {
+		return err
+	}
+	if err := kube.NewIngress(c.ns, service, expose).Delete(c.kc); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (r *Runner) ListTask() ([]string, error) {
-	_, contents, err := r.client.ListDeployments()
-	return contents, err
+func (c *Client) ListTask() ([]string, error) {
+	res := &appsv1.DeploymentList{}
+	if err := kube.NewDeployment(c.ns, &types.ManifestService{}).List(c.kc, res); err != nil {
+		return nil, err
+	}
+	if len(res.Items) == 0 {
+		return nil, errors.New("no deployment")
+	}
+
+	contents := make([]string, 0, len(res.Items))
+	for _, item := range res.Items {
+		content, _ := json.Marshal(item)
+		contents = append(contents, string(content))
+	}
+	return contents, nil
 }
 
-func (r *Runner) Metering() (map[string]*types.ResourceUnit, error) {
-	return r.client.Metering()
+func (c *Client) Metering() (map[string]*types.ResourceUnit, error) {
+	result := &map[string]*types.ResourceUnit{}
+	if err := kube.NewMetering(c.ns, &types.ManifestService{}).List(c.kc, result); err != nil {
+		return nil, err
+	}
+	return *result, nil
 }
