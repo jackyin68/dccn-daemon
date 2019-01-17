@@ -3,7 +3,6 @@ package kube
 import (
 	"github.com/Ankr-network/dccn-daemon/types"
 	"github.com/pkg/errors"
-	k8sErr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -38,7 +37,7 @@ func (k *prepare) Update(c *Client) (rollback func(c *Client) error, err error) 
 
 	// prepare namespace
 	_, err = NewNamespace(k.ns(), k.service).Update(c)
-	if k8sErr.IsNotFound(err) {
+	if IsNotFound(err) {
 		err = NewNamespace(k.ns(), k.service).Create(c)
 		rollback = NewNamespace(k.ns(), k.service).Delete
 	}
@@ -63,19 +62,19 @@ func (k *prepare) Update(c *Client) (rollback func(c *Client) error, err error) 
 
 	// delete stale resource
 	// FIXME: init structure
-	if err = (&deployment{}).DeleteCollection(c, selector); err != nil {
+	if err = NewDeployment(k.ns(), k.service).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	if err = (&ingress{}).DeleteCollection(c, selector); err != nil {
+	if err = NewIngress(k.ns(), k.service, nil).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	if err = (&service{}).DeleteCollection(c, selector); err != nil {
+	if err = NewService(k.ns(), k.service, nil).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	if err = (&job{}).DeleteCollection(c, selector); err != nil {
+	if err = NewJob(k.ns(), k.service).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	if err = (&cronJob{}).DeleteCollection(c, selector); err != nil {
+	if err = NewCronJob(k.ns(), k.service, "").DeleteCollection(c, selector); err != nil {
 		return
 	}
 
