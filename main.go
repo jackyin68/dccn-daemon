@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 
@@ -18,11 +17,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/types"
 	apiv1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 var (
@@ -78,39 +73,21 @@ func metricCmd() *cobra.Command {
 		Long:  "metric a long running server to handle ankr-hub requests",
 	}
 
-	openKubeConfig := func(cfgpath string) (*rest.Config, error) {
-		if cfgpath == "" {
-			cfgpath = path.Join(homedir.HomeDir(), ".kube", "config")
-		}
-
-		if _, err := os.Stat(cfgpath); err == nil {
-			cfg, err := clientcmd.BuildConfigFromFlags("", cfgpath)
-			if err != nil {
-				return nil, errors.Wrap(err, cfgpath)
-			}
-			return cfg, nil
-		}
-
-		cfg, err := rest.InClusterConfig()
-		if err != nil {
-			return nil, errors.Wrap(err, cfgpath+" fallback in cluster")
-		}
-		return cfg, nil
-	}
+	ns := cmd.Flags().StringP("namespace", "n", apiv1.NamespaceDefault, "kubernetes namespace")
+	host := cmd.Flags().String("ingress-host", "localhost", "kubernetes ingress host")
+	cfgpath := cmd.Flags().String("k8s-cfg", kubeCfg, "kubernetes config")
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
-		cfg, _ := openKubeConfig(kubeCfg)
-		metc, _ := metricsclient.NewForConfig(cfg)
-
-		list, err := metc.MetricsV1beta1().NodeMetricses().List(metav1.ListOptions{})
+		client, err := task.NewTasker(*cfgpath, *ns, *host)
 		exitOnErr(err)
-		data, _ := json.MarshalIndent(list, "", "    ")
-		fmt.Println(string(data))
 
-		list2, err := metc.MetricsV1beta1().PodMetricses("kube-system").List(metav1.ListOptions{})
+		metrics, err := client.Metrics()
 		exitOnErr(err)
-		data, _ = json.MarshalIndent(list2, "", "    ")
-		fmt.Println(string(data))
+
+		data, err := json.MarshalIndent(metrics, "", "    ")
+		exitOnErr(err)
+
+		fmt.Printf("%s\n", data)
 	}
 
 	return cmd
@@ -176,7 +153,7 @@ func taskCmd() *cobra.Command {
 		Long:  "create a new deploy task with your images",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewClient(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			exitOnErr(client.CreateTasks(args[0], args[1:]...))
@@ -189,7 +166,7 @@ func taskCmd() *cobra.Command {
 		Long:  "create a new job task with your images a new job task with your images",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewClient(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			exitOnErr(client.CreateJobs(args[0], "cron" /*FIXME*/, args[1:]...))
@@ -205,7 +182,7 @@ func taskCmd() *cobra.Command {
 			replicas, err := strconv.ParseUint(args[2], 10, 32)
 			exitOnErr(err)
 
-			client, err := task.NewClient(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			exitOnErr(client.UpdateTask(args[0], args[1], uint32(replicas), 80, 80))
@@ -218,7 +195,7 @@ func taskCmd() *cobra.Command {
 		Long:  "delete a exist task",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewClient(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			exitOnErr(client.CancelTask(args[0]))
@@ -230,7 +207,7 @@ func taskCmd() *cobra.Command {
 		Short: "list tasks",
 		Long:  "list all tasks running",
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewClient(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			tasks, err := client.ListTask()
@@ -266,7 +243,7 @@ func blockchainCmd() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			// collect data
-			clientTask, err := task.NewClient(*cfgpath, *ns, *host)
+			clientTask, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			metering, err := clientTask.Metering()

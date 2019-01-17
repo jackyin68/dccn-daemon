@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log"
 	"strings"
@@ -28,19 +29,19 @@ var dataCenterName string
 // ServeTask will serve the task metering with blockchain logic
 func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
-	client, err := task.NewClient(cfgpath, namespace, ingressHost)
+	tasker, err := task.NewTasker(cfgpath, namespace, ingressHost)
 	if err != nil {
 		return err
 	}
 
-	go taskMetering(client, dcName, namespace, tendermintServer, tendermintWsEndpoint)
+	go taskMetering(tasker, dcName, namespace, tendermintServer, tendermintWsEndpoint)
 
 	var taskCh = make(chan *taskCtx) // block chan, serve single task one time
-	go taskOperator(client, dcName, taskCh)
-	return taskReciver(client, hubServer, dcName, taskCh)
+	go taskOperator(tasker, dcName, taskCh)
+	return taskReciver(tasker, hubServer, dcName, taskCh)
 }
 
-func taskMetering(c *task.Client, dcName, namespace, server, wsEndpoint string) {
+func taskMetering(c *task.Tasker, dcName, namespace, server, wsEndpoint string) {
 	once := &sync.Once{}
 	tick := time.Tick(30 * time.Second)
 	for range tick {
@@ -65,7 +66,7 @@ func taskMetering(c *task.Client, dcName, namespace, server, wsEndpoint string) 
 	}
 }
 
-func taskReciver(c *task.Client, hubServer, dcName string, taskCh chan<- *taskCtx) error {
+func taskReciver(c *task.Tasker, hubServer, dcName string, taskCh chan<- *taskCtx) error {
 	// try once to test connection, all tests should finish in 5s
 	// todo remove such codes has no meaning
 	stream, closeStream, err := dialStream(5*time.Second, hubServer)
@@ -212,12 +213,16 @@ func heartBeat(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_Serve
 		},
 	}
 
-	tasks, err := c.ListTask()
+	metrics, err := c.Metrics()
 	if err != nil {
 		glog.V(1).Infoln(err)
 		dataCenter.Report = err.Error()
 	} else {
-		dataCenter.Report = strings.Join(tasks, "\n")
+		data, err := json.Marshal(metrics)
+		if err != nil {
+			dataCenter.Report = err.Error()
+		}
+		dataCenter.Report = string(data)
 	}
 
 	return send(stream, &message)

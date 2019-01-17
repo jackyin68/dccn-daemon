@@ -6,10 +6,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
-type Deployment struct {
+type deployment struct {
 	*common
 	service *types.ManifestService
 
@@ -21,7 +20,7 @@ func NewDeployment(namespace string, service *types.ManifestService) Kube {
 		return mockKube
 	}
 
-	return &Deployment{
+	return &deployment{
 		common: &common{
 			namespace: namespace,
 			service:   service,
@@ -30,7 +29,7 @@ func NewDeployment(namespace string, service *types.ManifestService) Kube {
 	}
 }
 
-func (k *Deployment) build() {
+func (k *deployment) build() {
 	replicas := int32(k.service.Count)
 	k.Deployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -54,16 +53,16 @@ func (k *Deployment) build() {
 	}
 }
 
-func (k *Deployment) Create(kc kubernetes.Interface) error {
+func (k *deployment) Create(c *Client) error {
 	k.build()
-	_, err := kc.AppsV1().Deployments(k.ns()).Create(k.Deployment)
+	_, err := c.AppsV1().Deployments(k.ns()).Create(k.Deployment)
 	return errors.Wrap(err, "create deployment")
 }
 
-func (k *Deployment) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+func (k *deployment) Update(c *Client) (rollback func(c *Client) error, err error) {
 	defer func() { err = errors.Wrap(err, "update deployment") }()
 
-	obj, err := kc.AppsV1().Deployments(k.ns()).Get(k.name(), metav1.GetOptions{})
+	obj, err := c.AppsV1().Deployments(k.ns()).Get(k.name(), metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -76,27 +75,27 @@ func (k *Deployment) Update(kc kubernetes.Interface) (rollback func(kc kubernete
 	k.Deployment.Spec.Template.Labels = k.labels()
 	k.Deployment.Spec.Template.Spec.Containers = []corev1.Container{k.container()}
 
-	_, err = kc.AppsV1().Deployments(k.ns()).Update(k.Deployment)
+	_, err = c.AppsV1().Deployments(k.ns()).Update(k.Deployment)
 	if err != nil {
 		return nil, err
 	}
 
-	return func(kc kubernetes.Interface) error {
-		_, err = kc.AppsV1().Deployments(k.ns()).Update(obj)
+	return func(c *Client) error {
+		_, err = c.AppsV1().Deployments(k.ns()).Update(obj)
 		return err
 	}, nil
 }
-func (k *Deployment) Delete(kc kubernetes.Interface) error {
-	err := kc.AppsV1().Deployments(k.ns()).Delete(k.name(), &metav1.DeleteOptions{})
+func (k *deployment) Delete(c *Client) error {
+	err := c.AppsV1().Deployments(k.ns()).Delete(k.name(), &metav1.DeleteOptions{})
 	return errors.Wrap(err, "delete deployment")
 }
-func (k *Deployment) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) error {
-	err := kc.AppsV1().Deployments(k.ns()).DeleteCollection(&metav1.DeleteOptions{}, selector)
+func (k *deployment) DeleteCollection(c *Client, selector metav1.ListOptions) error {
+	err := c.AppsV1().Deployments(k.ns()).DeleteCollection(&metav1.DeleteOptions{}, selector)
 	return errors.Wrap(err, "delete deployment collection")
 }
 
-func (k *Deployment) List(kc kubernetes.Interface, result interface{}) error {
-	list, err := kc.AppsV1().Deployments(k.ns()).List(metav1.ListOptions{})
+func (k *deployment) List(c *Client, result interface{}) error {
+	list, err := c.AppsV1().Deployments(k.ns()).List(metav1.ListOptions{})
 	if err != nil {
 		return errors.Wrap(err, "list deployment")
 	}

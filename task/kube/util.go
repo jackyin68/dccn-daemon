@@ -1,15 +1,22 @@
 package kube
 
 import (
+	"os"
+	"path"
 	"strings"
 
 	"github.com/Ankr-network/dccn-daemon/types"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 // For unit test
@@ -18,11 +25,11 @@ var mockKube Kube
 // Kubenetes actions interface
 //go:generate mockgen -package $GOPACKAGE -destination mock_kube.go github.com/Ankr-network/dccn-daemon/task/kube Kube
 type Kube interface {
-	Create(kc kubernetes.Interface) (err error)
-	Delete(kc kubernetes.Interface) (err error)
-	Update(kc kubernetes.Interface) (rollback func(kubernetes.Interface) error, err error)
-	DeleteCollection(kc kubernetes.Interface, options metav1.ListOptions) (err error)
-	List(kc kubernetes.Interface, result interface{}) (err error)
+	Create(c *Client) (err error)
+	Delete(c *Client) (err error)
+	Update(c *Client) (rollback func(c *Client) error, err error)
+	DeleteCollection(c *Client, options metav1.ListOptions) (err error)
+	List(c *Client, result interface{}) (err error)
 }
 
 const managedLabelName = "ankr.network"
@@ -92,4 +99,47 @@ func exposeExternalPort(expose *types.ManifestServiceExpose) int32 {
 func Selector() string {
 	req, _ := labels.NewRequirement(managedLabelName, selection.Equals, []string{"true"})
 	return labels.NewSelector().Add(*req).String()
+}
+
+type Client struct {
+	kubernetes.Interface
+	metc metricsclient.Interface
+}
+
+func NewClient(cfgpath string) (*Client, error) {
+	config, err := openKubeConfig(cfgpath)
+	if err != nil {
+		return nil, errors.Wrap(err, "building config flags")
+	}
+
+	kc, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating kubernetes client")
+	}
+
+	metc, err := metricsclient.NewForConfig(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating metrics client")
+	}
+
+	return &Client{kc, metc}, nil
+}
+func openKubeConfig(cfgpath string) (*rest.Config, error) {
+	if cfgpath == "" {
+		cfgpath = path.Join(homedir.HomeDir(), ".kube", "config")
+	}
+
+	if _, err := os.Stat(cfgpath); err == nil {
+		cfg, err := clientcmd.BuildConfigFromFlags("", cfgpath)
+		if err != nil {
+			return nil, errors.Wrap(err, cfgpath)
+		}
+		return cfg, nil
+	}
+
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, cfgpath+" fallback in cluster")
+	}
+	return cfg, nil
 }
