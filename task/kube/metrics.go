@@ -55,7 +55,7 @@ type Metrics struct {
 	Endpoints  map[int32]int64
 }
 
-func (k *metrics) List(c *Client, result interface{}) error {
+func (k *metrics) List(c *Client, result interface{}) (err error) {
 	defer func() { err = errors.Wrap(err, "list metrics") }()
 
 	res := &Metrics{
