@@ -56,6 +56,8 @@ type Metrics struct {
 }
 
 func (k *metrics) List(c *Client, result interface{}) error {
+	defer func() { err = errors.Wrap(err, "list metrics") }()
+
 	res := &Metrics{
 		NodeImages: map[string][][]string{},
 		NodeTotal:  map[string]*Metric{},
@@ -64,7 +66,7 @@ func (k *metrics) List(c *Client, result interface{}) error {
 	}
 	{
 		nodeList := &corev1.NodeList{}
-		if err := (&node{}).List(c, nodeList); err != nil {
+		if err := NewNode(k.ns(), k.service).List(c, nodeList); err != nil {
 			return err
 		}
 		for _, item := range nodeList.Items {
@@ -105,11 +107,9 @@ func (k *metrics) List(c *Client, result interface{}) error {
 		}
 	}
 	{
-		metcs, err := c.metc.Metrics().NodeMetricses().List(metav1.ListOptions{
-			// LabelSelector: Selector(),
-		})
+		metcs, err := c.metc.Metrics().NodeMetricses().List(metav1.ListOptions{})
 		if err != nil {
-			return errors.Wrap(err, "list metrics")
+			return errors.Wrap(err, "node metrics")
 		}
 		for _, item := range metcs.Items {
 			metric := &Metric{}
