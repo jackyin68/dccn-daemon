@@ -95,10 +95,15 @@ func exposeExternalPort(expose *types.ManifestServiceExpose) int32 {
 	}
 	return int32(expose.ExternalPort)
 }
-
 func Selector() string {
 	req, _ := labels.NewRequirement(managedLabelName, selection.Equals, []string{"true"})
 	return labels.NewSelector().Add(*req).String()
+}
+func IsNotFound(err error) bool {
+	if err != nil {
+		return strings.HasSuffix(err.Error(), "not found")
+	}
+	return false
 }
 
 type Client struct {

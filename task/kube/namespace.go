@@ -31,13 +31,13 @@ func NewNamespace(ns string, service *types.ManifestService) Kube {
 func (k *namespace) build() {
 	k.Namespace = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   k.ns(),
-			Labels: k.labels(),
+			Name: k.ns(),
 		},
 	}
 }
 
 func (k *namespace) Create(c *Client) error {
+	k.build()
 	_, err := c.CoreV1().Namespaces().Create(k.Namespace)
 	return errors.Wrap(err, "create namespace")
 }
@@ -45,7 +45,7 @@ func (k *namespace) Create(c *Client) error {
 func (k *namespace) Update(c *Client) (rollback func(c *Client) error, err error) {
 	defer func() { err = errors.Wrap(err, "update namespace") }()
 
-	obj, err := c.CoreV1().Namespaces().Get(k.name(), metav1.GetOptions{})
+	obj, err := c.CoreV1().Namespaces().Get(k.ns(), metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
