@@ -6,10 +6,9 @@ import (
 	"github.com/Ankr-network/dccn-daemon/types"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
-type Metering struct {
+type metering struct {
 	*common
 }
 
@@ -18,7 +17,7 @@ func NewMetering(namespace string, service *types.ManifestService) Kube {
 		return mockKube
 	}
 
-	return &Metering{
+	return &metering{
 		common: &common{
 			namespace: namespace,
 			service:   service,
@@ -26,23 +25,23 @@ func NewMetering(namespace string, service *types.ManifestService) Kube {
 	}
 }
 
-func (k *Metering) Create(kc kubernetes.Interface) error {
+func (k *metering) Create(c *Client) error {
 	return nil
 }
 
-func (k *Metering) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+func (k *metering) Update(c *Client) (rollback func(c *Client) error, err error) {
 	return nil, nil
 }
 
-func (k *Metering) Delete(kc kubernetes.Interface) error {
+func (k *metering) Delete(c *Client) error {
 	return nil
 }
-func (k *Metering) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) error {
+func (k *metering) DeleteCollection(c *Client, selector metav1.ListOptions) error {
 	return nil
 }
 
-func (k *Metering) List(kc kubernetes.Interface, result interface{}) error {
-	list, err := kc.CoreV1().Pods(k.ns()).List(metav1.ListOptions{
+func (k *metering) List(c *Client, result interface{}) error {
+	list, err := c.CoreV1().Pods(k.ns()).List(metav1.ListOptions{
 		LabelSelector: Selector(),
 	})
 	if err != nil {

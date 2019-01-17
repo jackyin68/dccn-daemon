@@ -7,10 +7,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/client-go/kubernetes"
 )
 
-type Prepare struct {
+type prepare struct {
 	*common
 	service *types.ManifestService
 }
@@ -20,7 +19,7 @@ func NewPrepare(namespace string, service *types.ManifestService) Kube {
 		return mockKube
 	}
 
-	return &Prepare{
+	return &prepare{
 		common: &common{
 			namespace: namespace,
 			service:   service,
@@ -29,18 +28,18 @@ func NewPrepare(namespace string, service *types.ManifestService) Kube {
 	}
 }
 
-func (k *Prepare) Create(kc kubernetes.Interface) error {
+func (k *prepare) Create(c *Client) error {
 	return nil
 }
 
 // FIXME: logic
-func (k *Prepare) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+func (k *prepare) Update(c *Client) (rollback func(c *Client) error, err error) {
 	defer func() { err = errors.Wrap(err, "prepare env") }()
 
 	// prepare namespace
-	_, err = NewNamespace(k.ns(), k.service).Update(kc)
+	_, err = NewNamespace(k.ns(), k.service).Update(c)
 	if k8sErr.IsNotFound(err) {
-		err = NewNamespace(k.ns(), k.service).Create(kc)
+		err = NewNamespace(k.ns(), k.service).Create(c)
 		rollback = NewNamespace(k.ns(), k.service).Delete
 	}
 	if err != nil {
@@ -64,32 +63,32 @@ func (k *Prepare) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.I
 
 	// delete stale resource
 	// FIXME: init structure
-	if err = (&Deployment{}).DeleteCollection(kc, selector); err != nil {
+	if err = (&deployment{}).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	if err = (&Ingress{}).DeleteCollection(kc, selector); err != nil {
+	if err = (&ingress{}).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	if err = (&Service{}).DeleteCollection(kc, selector); err != nil {
+	if err = (&service{}).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	if err = (&Job{}).DeleteCollection(kc, selector); err != nil {
+	if err = (&job{}).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	if err = (&CronJob{}).DeleteCollection(kc, selector); err != nil {
+	if err = (&cronJob{}).DeleteCollection(c, selector); err != nil {
 		return
 	}
 
 	return
 }
 
-func (k *Prepare) Delete(kc kubernetes.Interface) error {
+func (k *prepare) Delete(c *Client) error {
 	return nil
 }
-func (k *Prepare) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) error {
+func (k *prepare) DeleteCollection(c *Client, selector metav1.ListOptions) error {
 	return nil
 }
 
-func (k *Prepare) List(kc kubernetes.Interface, result interface{}) error {
+func (k *prepare) List(c *Client, result interface{}) error {
 	return nil
 }

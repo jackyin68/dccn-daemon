@@ -25,19 +25,19 @@ type taskCtx struct {
 // ServeTask will serve the task metering with blockchain logic
 func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
-	client, err := task.NewClient(cfgpath, namespace, ingressHost)
+	tasker, err := task.NewTasker(cfgpath, namespace, ingressHost)
 	if err != nil {
 		return err
 	}
 
-	go taskMetering(client, dcName, namespace, tendermintServer, tendermintWsEndpoint)
+	go taskMetering(tasker, dcName, namespace, tendermintServer, tendermintWsEndpoint)
 
 	var taskCh = make(chan *taskCtx) // block chan, serve single task one time
-	go taskOperator(client, dcName, taskCh)
-	return taskReciver(client, hubServer, dcName, taskCh)
+	go taskOperator(tasker, dcName, taskCh)
+	return taskReciver(tasker, hubServer, dcName, taskCh)
 }
 
-func taskMetering(c *task.Client, dcName, namespace, server, wsEndpoint string) {
+func taskMetering(c *task.Tasker, dcName, namespace, server, wsEndpoint string) {
 	once := &sync.Once{}
 	tick := time.Tick(30 * time.Second)
 	for range tick {
@@ -62,7 +62,7 @@ func taskMetering(c *task.Client, dcName, namespace, server, wsEndpoint string) 
 	}
 }
 
-func taskReciver(c *task.Client, hubServer, dcName string, taskCh chan<- *taskCtx) error {
+func taskReciver(c *task.Tasker, hubServer, dcName string, taskCh chan<- *taskCtx) error {
 	// try once to test connection, all tests should finish in 5s
 	stream, closeStream, err := dialStream(5*time.Second, hubServer)
 	if err != nil {
@@ -110,7 +110,7 @@ func taskReciver(c *task.Client, hubServer, dcName string, taskCh chan<- *taskCt
 	}
 }
 
-func taskOperator(c *task.Client, dcName string, taskCh <-chan *taskCtx) {
+func taskOperator(c *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 	glog.Infoln("Task operator started.")
 	for {
 		chTask, ok := <-taskCh
@@ -179,7 +179,7 @@ func heartBeat(c *task.Client, dcName string, stream grpc_dcmgr.DCStreamer_Serve
 		},
 	}
 
-	tasks, err := c.ListTask()
+	metrics, err := c.Metrics()
 	if err != nil {
 		glog.V(1).Infoln(err)
 		dataCenter.Report = err.Error()

@@ -5,31 +5,30 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
-type Namespace struct {
+type namespace struct {
 	*common
 	service *types.ManifestService
 
 	*corev1.Namespace
 }
 
-func NewNamespace(namespace string, service *types.ManifestService) Kube {
+func NewNamespace(ns string, service *types.ManifestService) Kube {
 	if mockKube != nil {
 		return mockKube
 	}
 
-	return &Namespace{
+	return &namespace{
 		common: &common{
-			namespace: namespace,
+			namespace: ns,
 			service:   service,
 		},
 		service: service,
 	}
 }
 
-func (k *Namespace) build() {
+func (k *namespace) build() {
 	k.Namespace = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   k.ns(),
@@ -38,15 +37,15 @@ func (k *Namespace) build() {
 	}
 }
 
-func (k *Namespace) Create(kc kubernetes.Interface) error {
-	_, err := kc.CoreV1().Namespaces().Create(k.Namespace)
+func (k *namespace) Create(c *Client) error {
+	_, err := c.CoreV1().Namespaces().Create(k.Namespace)
 	return errors.Wrap(err, "create namespace")
 }
 
-func (k *Namespace) Update(kc kubernetes.Interface) (rollback func(kc kubernetes.Interface) error, err error) {
+func (k *namespace) Update(c *Client) (rollback func(c *Client) error, err error) {
 	defer func() { err = errors.Wrap(err, "update namespace") }()
 
-	obj, err := kc.CoreV1().Namespaces().Get(k.name(), metav1.GetOptions{})
+	obj, err := c.CoreV1().Namespaces().Get(k.name(), metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -55,27 +54,27 @@ func (k *Namespace) Update(kc kubernetes.Interface) (rollback func(kc kubernetes
 	k.Namespace.Name = k.ns()
 	k.Namespace.Labels = k.labels()
 
-	_, err = kc.CoreV1().Namespaces().Update(k.Namespace)
+	_, err = c.CoreV1().Namespaces().Update(k.Namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	return func(kc kubernetes.Interface) error {
-		_, err = kc.CoreV1().Namespaces().Update(obj)
+	return func(c *Client) error {
+		_, err = c.CoreV1().Namespaces().Update(obj)
 		return err
 	}, nil
 }
 
-func (k *Namespace) Delete(kc kubernetes.Interface) error {
-	err := kc.CoreV1().Namespaces().Delete(k.name(), &metav1.DeleteOptions{})
+func (k *namespace) Delete(c *Client) error {
+	err := c.CoreV1().Namespaces().Delete(k.name(), &metav1.DeleteOptions{})
 	return errors.Wrapf(err, "delete namespace(%s)", k.name())
 }
-func (k *Namespace) DeleteCollection(kc kubernetes.Interface, selector metav1.ListOptions) error {
+func (k *namespace) DeleteCollection(c *Client, selector metav1.ListOptions) error {
 	return errors.New("delete namespace collection is dangerous")
 }
 
-func (k *Namespace) List(kc kubernetes.Interface, result interface{}) error {
-	list, err := kc.CoreV1().Namespaces().List(metav1.ListOptions{})
+func (k *namespace) List(c *Client, result interface{}) error {
+	list, err := c.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
 		return errors.Wrap(err, "list namespace")
 	}
