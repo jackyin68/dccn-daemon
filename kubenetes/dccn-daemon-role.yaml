@@ -4,10 +4,13 @@ metadata:
   name: deployment-daemon
 rules:
 - apiGroups: [""]
-  resources: ["namespaces","nodes", "pods"]
+  resources: ["namespaces","nodes"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+- apiGroups: ["batch"]
+  resources: ["jobs","cornjobs"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
 - apiGroups: [""]
   resources: ["pods"]
