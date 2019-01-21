@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Ankr-network/dccn-common/constant/dc"
 	pb "github.com/Ankr-network/dccn-common/protocol/k8s"
 	"github.com/Ankr-network/dccn-daemon/task"
 	"github.com/golang/glog"
@@ -123,40 +124,40 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 		}
 
 		switch task.Type {
-		case HeartBeat.String():
+		case dc.HeartBeat.String():
 			heartBeat(r, dcName, task.stream)
 
-		case NewTask.String():
+		case dc.NewTask.String():
 			images := strings.Split(task.Image, ",")
 			if err := r.CreateTasks(task.Name, images...); err != nil {
 				glog.V(1).Infoln(err)
-				message.Status = StartFailure.String()
+				message.Status = dc.StartFailure.String()
 				message.Report = err.Error()
 			} else {
-				message.Status = StartSuccess.String()
+				message.Status = dc.StartSuccess.String()
 			}
 
 			send(task.stream, &message)
 
-		case UpdateTask.String():
+		case dc.UpdateTask.String():
 			// FIXME: hard code for no definition in protobuf
 			if err := r.UpdateTask(task.Name, task.Image, 2, 80, 80); err != nil {
 				glog.V(1).Infoln(err)
-				message.Status = UpdateFailure.String()
+				message.Status = dc.UpdateFailure.String()
 				message.Report = err.Error()
 			} else {
-				message.Status = UpdateSuccess.String()
+				message.Status = dc.UpdateSuccess.String()
 			}
 
 			send(task.stream, &message)
 
-		case CancelTask.String():
+		case dc.CancelTask.String():
 			if err := r.CancelTask(task.Name); err != nil {
 				glog.V(1).Infoln(err)
-				message.Status = CancelFailure.String()
+				message.Status = dc.Cancelled.String() // FIXME:
 				message.Report = err.Error()
 			} else {
-				message.Status = Cancelled.String()
+				message.Status = dc.Cancelled.String()
 			}
 
 			send(task.stream, &message)
@@ -168,7 +169,7 @@ func heartBeat(r *task.Runner, dcName string, stream pb.Dccnk8S_K8TaskClient) er
 	var message = pb.K8SMessage{
 		Datacenter: dcName,
 		Taskname:   "",
-		Type:       HeartBeat.String(),
+		Type:       dc.HeartBeat.String(),
 	}
 
 	tasks, err := r.ListTask()

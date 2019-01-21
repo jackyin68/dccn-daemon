@@ -2,12 +2,14 @@
 
 
 [[projects]]
-  branch = "develop"
-  digest = "1:db422d1cceac282bc8ea9e0038200cf2b28495a50393415b2b8ed8d742ddb753"
+  digest = "1:07ce232b1b42d5c207f837b2991702f1dac9a8ffd9167608c1c2a47967ce4878"
   name = "github.com/Ankr-network/dccn-common"
-  packages = ["protocol/k8s"]
+  packages = [
+    "constant/dc",
+    "protocol/k8s",
+  ]
   pruneopts = "NUT"
-  revision = "bbf3e6f5f41109030acb1a761cf04824faa0669d"
+  revision = "ec8ffdf8dc11f5d2712770caf7d32c20a9a8f1b7"
 
 [[projects]]
   branch = "master"
@@ -810,6 +812,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Ankr-network/dccn-common/constant/dc",
     "github.com/Ankr-network/dccn-common/protocol/k8s",
     "github.com/gofrs/uuid",
     "github.com/gogo/protobuf/gogoproto",

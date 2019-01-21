@@ -26,7 +26,7 @@
 
 [[constraint]]
   name = "github.com/Ankr-network/dccn-common"
-  revision = "bbf3e6f5f41109030acb1a761cf04824faa0669d" # branch = "develop"
+  revision = "ec8ffdf8dc11f5d2712770caf7d32c20a9a8f1b7" # SWDEV-134
 
 [prune]
   non-go = true
