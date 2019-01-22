@@ -71,12 +71,12 @@ func (k *prepare) Update(c *Client) (rollback func(c *Client) error, err error) 
 	if err = NewService(k.ns(), k.service, nil).DeleteCollection(c, selector); err != nil {
 		return
 	}
-	// if err = NewJob(k.ns(), k.service).DeleteCollection(c, selector); err != nil {
-	// 	return
-	// }
-	// if err = NewCronJob(k.ns(), k.service, "").DeleteCollection(c, selector); err != nil {
-	// 	return
-	// }
+	if err = NewJob(k.ns(), k.service).DeleteCollection(c, selector); err != nil {
+		return
+	}
+	if err = NewCronJob(k.ns(), k.service, "").DeleteCollection(c, selector); err != nil {
+		return
+	}
 
 	return
 }
