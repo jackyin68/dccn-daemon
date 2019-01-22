@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"strings"
 	"sync"
@@ -167,7 +168,7 @@ func taskOperator(c *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 	}
 }
 
-func heartBeat(c *task.Client, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
+func heartBeat(c *task.Tasker, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
 	dataCenter := common_proto.DataCenter{
 		Name: dcName,
 	}
@@ -184,7 +185,8 @@ func heartBeat(c *task.Client, dcName string, stream grpc_dcmgr.DCStreamer_Serve
 		glog.V(1).Infoln(err)
 		dataCenter.Report = err.Error()
 	} else {
-		dataCenter.Report = strings.Join(tasks, "\n")
+		data, _ := json.Marshal(metrics)
+		dataCenter.Report = string(data)
 	}
 
 	return send(stream, &message)
