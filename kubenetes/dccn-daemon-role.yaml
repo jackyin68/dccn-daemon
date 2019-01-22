@@ -1,5 +1,5 @@
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: deployment-daemon
 rules:
@@ -7,7 +7,10 @@ rules:
   resources: ["namespaces","nodes"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: [""]
-  resources: ["pods","jobs","cornjobs"]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+- apiGroups: ["batch"]
+  resources: ["jobs","cronjobs"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
 - apiGroups: ["extensions", "apps"]
   resources: ["deployments"]
