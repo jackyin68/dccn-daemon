@@ -7,7 +7,8 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/Ankr-network/dccn-common/protocol/k8s"
+	common_proto "github.com/Ankr-network/dccn-common/protos/common"
+	grpc_dcmgr "github.com/Ankr-network/dccn-common/protos/dcmgr/v1/grpc"
 	"github.com/Ankr-network/dccn-daemon/task"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -16,8 +17,8 @@ import (
 )
 
 type taskCtx struct {
-	*pb.Task
-	stream pb.Dccnk8S_K8TaskClient
+	*common_proto.Event
+	stream grpc_dcmgr.DCStreamer_ServerStreamClient
 	ctx    context.Context
 }
 
@@ -99,9 +100,9 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 			glog.Errorln("Failed to receive task:", err)
 
 		} else {
-			glog.V(1).Infof("new task %s: %v", in.Type, in)
+			glog.V(1).Infof("new task %s: %v", in.EventType, in)
 			taskCh <- &taskCtx{
-				Task:   in,
+				Event:  in,
 				stream: stream,
 			}
 		}
@@ -111,78 +112,76 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 	glog.Infoln("Task operator started.")
 	for {
-		task, ok := <-taskCh
+		chTask, ok := <-taskCh
 		if !ok {
 			return
 		}
 
-		var message = pb.K8SMessage{
-			Datacenter: dcName,
-			Taskname:   task.Name,
-			Type:       task.Type,
-		}
+		task := chTask.GetTask()
 
-		switch task.Type {
-		case HeartBeat.String():
-			heartBeat(r, dcName, task.stream)
+		switch chTask.EventType {
+		case common_proto.Operation_HEARTBEAT:
+			heartBeat(r, dcName, chTask.stream)
 
-		case NewTask.String():
+		case common_proto.Operation_TASK_CREATE:
 			images := strings.Split(task.Image, ",")
+			task.Status = common_proto.TaskStatus_RUNNING
 			if err := r.CreateTasks(task.Name, images...); err != nil {
 				glog.V(1).Infoln(err)
-				message.Status = StartFailure.String()
-				message.Report = err.Error()
-			} else {
-				message.Status = StartSuccess.String()
+				task.Status = common_proto.TaskStatus_START_FAILED
+				chTask.Report = err.Error()
 			}
 
-			send(task.stream, &message)
+			send(chTask.stream, chTask.Event)
 
-		case UpdateTask.String():
+		case common_proto.Operation_TASK_UPDATE:
 			// FIXME: hard code for no definition in protobuf
+			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
 			if err := r.UpdateTask(task.Name, task.Image, 2, 80, 80); err != nil {
 				glog.V(1).Infoln(err)
-				message.Status = UpdateFailure.String()
-				message.Report = err.Error()
-			} else {
-				message.Status = UpdateSuccess.String()
+				task.Status = common_proto.TaskStatus_UPDATE_FAILED
+				chTask.Report = err.Error()
 			}
 
-			send(task.stream, &message)
+			send(chTask.stream, chTask.Event)
 
-		case CancelTask.String():
+		case common_proto.Operation_TASK_CANCEL:
+			task.Status = common_proto.TaskStatus_CANCELLED
 			if err := r.CancelTask(task.Name); err != nil {
 				glog.V(1).Infoln(err)
-				message.Status = CancelFailure.String()
-				message.Report = err.Error()
-			} else {
-				message.Status = Cancelled.String()
+				task.Status = common_proto.TaskStatus_CANCELL_FAILED
+				chTask.Report = err.Error()
 			}
 
-			send(task.stream, &message)
+			send(chTask.stream, chTask.Event)
 		}
 	}
 }
 
-func heartBeat(r *task.Runner, dcName string, stream pb.Dccnk8S_K8TaskClient) error {
-	var message = pb.K8SMessage{
-		Datacenter: dcName,
-		Taskname:   "",
-		Type:       HeartBeat.String(),
+func heartBeat(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
+	dataCenter := common_proto.DataCenter{
+		Name: dcName,
+	}
+
+	var message = common_proto.Event{
+		EventType: common_proto.Operation_HEARTBEAT,
+		OpMessage: &common_proto.Event_DataCenter{
+			DataCenter: &dataCenter,
+		},
 	}
 
 	tasks, err := r.ListTask()
 	if err != nil {
 		glog.V(1).Infoln(err)
-		message.Report = err.Error()
+		dataCenter.Report = err.Error()
 	} else {
-		message.Report = strings.Join(tasks, "\n")
+		dataCenter.Report = strings.Join(tasks, "\n")
 	}
 
 	return send(stream, &message)
 }
 
-func dialStream(timeout time.Duration, hubServer string) (pb.Dccnk8S_K8TaskClient, func(), error) {
+func dialStream(timeout time.Duration, hubServer string) (grpc_dcmgr.DCStreamer_ServerStreamClient, func(), error) {
 	var cancel context.CancelFunc
 	var ctx = context.Background()
 	if timeout > 0 {
@@ -199,8 +198,8 @@ func dialStream(timeout time.Duration, hubServer string) (pb.Dccnk8S_K8TaskClien
 		return nil, nil, errors.Wrapf(err, "dail ankr hub %s", hubServer)
 	}
 
-	client := pb.NewDccnk8SClient(conn)
-	stream, err := client.K8Task(ctx)
+	client := grpc_dcmgr.NewDCStreamerClient(conn)
+	stream, err := client.ServerStream(ctx)
 	if err != nil {
 		if cancel != nil {
 			cancel()
@@ -216,12 +215,12 @@ func dialStream(timeout time.Duration, hubServer string) (pb.Dccnk8S_K8TaskClien
 	}, nil
 }
 
-func send(stream pb.Dccnk8S_K8TaskClient, msg *pb.K8SMessage) error {
+func send(stream grpc_dcmgr.DCStreamer_ServerStreamClient, msg *common_proto.Event) error {
 	if err := stream.Send(msg); err != nil {
 		glog.V(2).Infof("send (%v) fail: %s", *msg, err)
 		return err
 	}
 
-	glog.V(3).Infof("send %s success", msg.Type)
+	glog.V(3).Infof("send %s success", msg.EventType)
 	return nil
 }
