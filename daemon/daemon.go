@@ -209,7 +209,9 @@ func dialStream(timeout time.Duration, hubServer string) (grpc_dcmgr.DCStreamer_
 	}
 
 	return stream, func() {
-		cancel()
+		if cancel != nil {
+			cancel()
+		}
 		stream.CloseSend()
 		conn.Close()
 	}, nil
