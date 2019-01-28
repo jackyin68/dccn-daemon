@@ -2,7 +2,7 @@
 
 
 [[projects]]
-  branch = "feature/SWDEV-135-micro-service"
+  branch = "develop"
   digest = "1:0aa51384bd90a8cce683a08c194d3e846b7c656aedebe11b6cfd93eb1f7e2dcc"
   name = "github.com/Ankr-network/dccn-common"
   packages = [
@@ -10,7 +10,7 @@
     "protos/dcmgr/v1/grpc",
   ]
   pruneopts = "NUT"
-  revision = "09914c53305154a18402db6b4e4b7dfa6919aec7"
+  revision = "7a53dfa087d86a46bf6da083212159ad9d85272f"
 
 [[projects]]
   branch = "master"
