@@ -149,7 +149,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			task.Status = common_proto.TaskStatus_CANCELLED
 			if err := r.CancelTask(task.Name); err != nil {
 				glog.V(1).Infoln(err)
-				task.Status = common_proto.TaskStatus_CANCELL_FAILED
+				task.Status = common_proto.TaskStatus_CANCEL_FAILED
 				chTask.Report = err.Error()
 			}
 
