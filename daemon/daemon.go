@@ -77,6 +77,7 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 			stream, closeStream, err = dialStream(0, hubServer)
 			if err != nil {
 				glog.Errorln("client fail to receive task:", err)
+				time.Sleep(5 * time.Second)
 				continue
 			}
 
