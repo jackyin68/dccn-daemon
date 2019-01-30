@@ -30,7 +30,7 @@ func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 		return err
 	}
 
-	go taskMetering(runner, dcName, namespace, tendermintServer, tendermintWsEndpoint)
+	// go taskMetering(runner, dcName, namespace, tendermintServer, tendermintWsEndpoint)
 
 	var taskCh = make(chan *taskCtx) // block chain, serve single task one time
 	go taskOperator(runner, dcName, taskCh)
@@ -132,8 +132,10 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_START_FAILED
 				chTask.Report = err.Error()
 			}
-
-			send(chTask.stream, chTask.Event)
+			send(chTask.stream, &common_proto.Event{
+				EventType: common_proto.Operation_TASK_CREATE,
+				OpMessage: &common_proto.Event_TaskFeedback{
+					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
 
 		case common_proto.Operation_TASK_UPDATE:
 			// FIXME: hard code for no definition in protobuf
@@ -144,7 +146,10 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 				chTask.Report = err.Error()
 			}
 
-			send(chTask.stream, chTask.Event)
+			send(chTask.stream, &common_proto.Event{
+				EventType: common_proto.Operation_TASK_UPDATE,
+				OpMessage: &common_proto.Event_TaskFeedback{
+					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
 
 		case common_proto.Operation_TASK_CANCEL:
 			task.Status = common_proto.TaskStatus_CANCELLED
@@ -154,7 +159,10 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 				chTask.Report = err.Error()
 			}
 
-			send(chTask.stream, chTask.Event)
+			send(chTask.stream, &common_proto.Event{
+				EventType: common_proto.Operation_TASK_CANCEL,
+				OpMessage: &common_proto.Event_TaskFeedback{
+					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
 		}
 	}
 }
