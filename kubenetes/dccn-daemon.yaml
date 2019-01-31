@@ -15,6 +15,6 @@ spec:
       containers:
       - name: dccn-daemon
         image: "815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn-daemon:feat"
-        command: ["dccn-daemon"]
-        args: ["start","datacenter_name","-s","api","-p","50051","-n","test-deploy","-S","dccn-tendermint","-v2"]
         imagePullPolicy: Always
+        command: ["dccn-daemon"]
+        args: ["start","datacenter_name","-s","client-dev.dccn.ankr.network","-p","50051","-n","test-deploy","-S","dccn-tendermint","-v2"]
