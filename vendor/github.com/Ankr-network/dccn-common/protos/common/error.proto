@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package common.proto;
-import "common/code.proto";
-
-message Error {
-    common.proto.Status status = 1;
-    string details = 2;
-}
