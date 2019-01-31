@@ -30,7 +30,7 @@ func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 		return err
 	}
 
-	// go taskMetering(runner, dcName, namespace, tendermintServer, tendermintWsEndpoint)
+	go taskMetering(runner, dcName, namespace, tendermintServer, tendermintWsEndpoint)
 
 	var taskCh = make(chan *taskCtx) // block chain, serve single task one time
 	go taskOperator(runner, dcName, taskCh)
