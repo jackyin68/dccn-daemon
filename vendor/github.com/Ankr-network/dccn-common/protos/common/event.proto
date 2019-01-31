@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package common.proto;
+
+import "common/code.proto";
+import "common/common.proto";
+
+// data center returns msg with task status
+message TaskFeedback {
+    string task_id = 1;
+    string url = 2;  // url of web application
+    string data_center = 3; // name of data center
+    string report = 4; // detail message
+    common.proto.TaskStatus status = 5; // StartSuccess or StartFailure JobDone Cancelled  Running  Other
+}
+
+// data center communicate with dc manager
+message Event {
+    Operation event_type = 1; // HeartBeat or task operation
+    string report = 2;
+
+    oneof op_message {
+        Task task = 3; // Deploy task action
+        TaskFeedback task_feedback = 4; // Return task status
+        DataCenter data_center = 5; // HearBeat Info with DataCenter message
+    }
+    
+}
+
+message MailEvent {
+    string name = 1;
+    string address = 2;
+    string message = 3;
+}
+

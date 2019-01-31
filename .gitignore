@@ -18,6 +18,5 @@
 .vscode
 .idea
 
-/vendor
 /_vendor-*
 dccn-daemon
