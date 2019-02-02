@@ -99,6 +99,29 @@ func (t *Tasker) CancelTask(name string) error {
 	}
 	return nil
 }
+func (t *Tasker) CancelJob(name, crontab string) error {
+	service := types.NewManifestService(name, "")
+	service.Count = 0
+	expose := &types.ManifestServiceExpose{}
+
+	if crontab == "" {
+		if err := kube.NewJob(t.ns, service).Delete(t.client); err != nil {
+			return err
+		}
+	} else {
+		if err := kube.NewCronJob(t.ns, service, crontab).Delete(t.client); err != nil {
+			return err
+		}
+	}
+
+	if err := kube.NewService(t.ns, service, expose).Delete(t.client); err != nil {
+		return err
+	}
+	if err := kube.NewIngress(t.ns, service, expose).Delete(t.client); err != nil {
+		return err
+	}
+	return nil
+}
 
 func (t *Tasker) ListTask() ([]string, error) {
 	res := &appsv1.DeploymentList{}
