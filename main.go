@@ -161,19 +161,6 @@ func taskCmd() *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "job <name> <images>",
-		Short: "create job task",
-		Long:  "create a new job task with your images a new job task with your images",
-		Args:  cobra.MinimumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewTasker(*cfgpath, *ns, *host)
-			exitOnErr(err)
-
-			exitOnErr(client.CreateJobs(args[0], "cron" /*FIXME*/, args[1:]...))
-		},
-	})
-
-	cmd.AddCommand(&cobra.Command{
 		Use:   "update <name> <images> <replicas>",
 		Short: "update exist task",
 		Long:  "update a exist task with your options",
@@ -216,6 +203,54 @@ func taskCmd() *cobra.Command {
 			for _, task := range tasks {
 				fmt.Println(task)
 			}
+		},
+	})
+
+	return cmd
+}
+
+func jobCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "job",
+		Short: "run single job",
+		Long:  "job is for run a single job in command line",
+	}
+
+	ns := cmd.PersistentFlags().StringP("namespace", "n", apiv1.NamespaceDefault, "kubernetes namespace")
+	host := cmd.PersistentFlags().String("ingress-host", "localhost", "kubernetes ingress host")
+	cfgpath := cmd.PersistentFlags().String("k8s-cfg", kubeCfg, "kubernetes config")
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "create <name> <images> [crontab]",
+		Short: "create (cron)job",
+		Long:  "create a new (cron)job with your images",
+		Args:  cobra.MinimumNArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			exitOnErr(err)
+
+			crontab := ""
+			if len(args) >= 3 {
+				crontab = args[2]
+			}
+			exitOnErr(client.CreateJobs(args[0], crontab, args[1:]...))
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "delete <name> [crontab]",
+		Short: "delete exist (cron)job",
+		Long:  "delete a exist (cron)job",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			exitOnErr(err)
+
+			crontab := ""
+			if len(args) >= 3 {
+				crontab = args[2]
+			}
+			exitOnErr(client.CancelJob(args[0], crontab))
 		},
 	})
 
