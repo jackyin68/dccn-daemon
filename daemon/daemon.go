@@ -138,6 +138,19 @@ func taskOperator(c *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				OpMessage: &common_proto.Event_TaskFeedback{
 					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
 
+		case common_proto.Operation_JOB_CREATE:
+			images := strings.Split(task.Image, ",")
+			task.Status = common_proto.TaskStatus_RUNNING
+			if err := c.CreateJobs(task.Name, "* * * * */1", images...); err != nil {
+				glog.V(1).Infoln(err)
+				task.Status = common_proto.TaskStatus_START_FAILED
+				chTask.Report = err.Error()
+			}
+			send(chTask.stream, &common_proto.Event{
+				EventType: common_proto.Operation_JOB_CREATE,
+				OpMessage: &common_proto.Event_TaskFeedback{
+					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
+
 		case common_proto.Operation_TASK_UPDATE:
 			// FIXME: hard code for no definition in protobuf
 			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
@@ -162,6 +175,19 @@ func taskOperator(c *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 
 			send(chTask.stream, &common_proto.Event{
 				EventType: common_proto.Operation_TASK_CANCEL,
+				OpMessage: &common_proto.Event_TaskFeedback{
+					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
+
+		case common_proto.Operation_JOB_CANCEL:
+			task.Status = common_proto.TaskStatus_CANCELLED
+			if err := c.CancelTask(task.Name); err != nil {
+				glog.V(1).Infoln(err)
+				task.Status = common_proto.TaskStatus_CANCEL_FAILED
+				chTask.Report = err.Error()
+			}
+
+			send(chTask.stream, &common_proto.Event{
+				EventType: common_proto.Operation_JOB_CANCEL,
 				OpMessage: &common_proto.Event_TaskFeedback{
 					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
 		}
