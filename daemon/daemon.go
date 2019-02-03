@@ -118,7 +118,12 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			return
 		}
 
+		glog.V(1).Infof("before get task  task %s ", chTask.String())
+
 		task := chTask.GetTask()
+		glog.V(1).Infof(">>>>>>>after get task  task name %s  ", task.Name)
+
+		glog.V(1).Infof("Operation_TASK_CREATE  task  %v", task)
 
 		switch chTask.EventType {
 		case common_proto.Operation_HEARTBEAT:
@@ -127,10 +132,16 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 		case common_proto.Operation_TASK_CREATE:
 			images := strings.Split(task.Image, ",")
 			task.Status = common_proto.TaskStatus_RUNNING
+
+			glog.V(1).Infof("Operation_TASK_CREATE  task %v", task)
 			if err := r.CreateTasks(task.Name, images...); err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_START_FAILED
 				chTask.Report = err.Error()
+				glog.V(1).Infof("error   : %s \n", chTask.Report)
+			} else {
+
+				glog.V(1).Infof("no error  when create task  : %s \n", chTask.Report)
 			}
 			send(chTask.stream, &common_proto.Event{
 				EventType: common_proto.Operation_TASK_CREATE,
@@ -138,6 +149,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
 
 		case common_proto.Operation_TASK_UPDATE:
+			glog.V(1).Infof("Operation_TASK_UPDATE  task  %v", task)
 			// FIXME: hard code for no definition in protobuf
 			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
 			if err := r.UpdateTask(task.Name, task.Image, 2, 80, 80); err != nil {
