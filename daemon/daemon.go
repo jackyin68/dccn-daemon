@@ -117,9 +117,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 		if !ok {
 			return
 		}
-
 		task := chTask.GetTask()
-
 		glog.V(1).Infof("Operation_TASK_CREATE  task  %v", task)
 
 		switch chTask.EventType {
