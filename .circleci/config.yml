@@ -69,43 +69,4 @@ jobs:
               echo "Deploy failed, roll back to previous version"
               kubectl rollout undo deploy/dccn-daemon 
             fi
-
-
-            
-#   test:
-#     docker:
-#   deploy-dev:
-#     docker:
-#   deploy-test:
-#     docker:
-
-# workflows:
-#   version: 2
-#   build-deploy:
-#     jobs:
-#       - build
-#       - test:
-#           requires:
-#             - build
-#       - deploy-dev:
-#           requires:
-#             - test
-#           filters:
-#             branches:
-#               only: develop
-#       - hold:
-#           type: approval
-#           requires:
-#             - test
-#           filters:
-#             branches:
-#               ignore:
-#                 - develop
-#                 - master
-#       - deploy-dev:
-#           requires:
-#             - hold
-#           filters:
-#             branches:
-#               only:
-#                 - /feature.*/
+            kubectl get all
