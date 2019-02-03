@@ -118,7 +118,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			return
 		}
 
-		glog.V(1).Infof("before get task  task %s ", chTask.String())
+		glog.V(1).Infof("before get task  task %v ", chTask)
 
 		task := chTask.GetTask()
 		glog.V(1).Infof(">>>>>>>after get task  task name %s  ", task.Name)
