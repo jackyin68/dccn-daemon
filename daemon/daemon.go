@@ -74,7 +74,7 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 	redial := true
 	for {
 		if redial {
-			stream, closeStream, err = dialStream(0, hubServer)
+			stream, closeStream, err = dialStream(50000*time.Second, hubServer)
 			if err != nil {
 				glog.Errorln("client fail to receive task:", err)
 				time.Sleep(5 * time.Second)
