@@ -64,7 +64,7 @@ func taskMetering(r *task.Runner, dcName, namespace, server, wsEndpoint string) 
 
 func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCtx) error {
 	// try once to test connection, all tests should finish in 5s
-	stream, closeStream, err := dialStream(5*time.Second, hubServer)
+	stream, closeStream, err := dialStream(50000*time.Second, hubServer)
 	if err != nil {
 		return err
 	}
