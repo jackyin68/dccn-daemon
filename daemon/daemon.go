@@ -63,7 +63,7 @@ func taskMetering(r *task.Runner, dcName, namespace, server, wsEndpoint string) 
 
 func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCtx) error {
 	// try once to test connection, all tests should finish in 5s
-	stream, closeStream, err := dialStream(5*time.Second, hubServer)
+	stream, closeStream, err := dialStream(50000*time.Second, hubServer)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 			stream, closeStream, err = dialStream(5*time.Second, hubServer)
 			if err != nil {
 				glog.Errorln("client fail to receive task:", err)
-				time.Sleep(5 * time.Second)
+				time.Sleep(50000 * time.Second)
 				continue
 			}
 
@@ -199,15 +199,15 @@ func heartBeat(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_Serve
 func dialStream(timeout time.Duration, hubServer string) (grpc_dcmgr.DCStreamer_ServerStreamClient, func(), error) {
 	var cancel context.CancelFunc
 	var ctx = context.Background()
-	if timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-	}
+	//if timeout > 0 {
+	//	ctx, cancel = context.WithTimeout(ctx, timeout)
+	//}
 
 	conn, err := grpc.DialContext(ctx, hubServer, grpc.WithInsecure())
-		//grpc.WithKeepaliveParams(keepalive.ClientParameters{ // TODO: dynamic config in config file
-		//	Time:    20 * time.Second,
-		//	Timeout: 5 * time.Second,
-		//}))
+	//grpc.WithKeepaliveParams(keepalive.ClientParameters{ // TODO: dynamic config in config file
+	//	Time:    20 * time.Second,
+	//	Timeout: 5 * time.Second,
+	//}))
 	if err != nil {
 		cancel()
 		return nil, nil, errors.Wrapf(err, "dail ankr hub %s", hubServer)
