@@ -7,13 +7,12 @@ import (
 	"sync"
 	"time"
 
-	common_proto "github.com/Ankr-network/dccn-common/protos/common"
+	"github.com/Ankr-network/dccn-common/protos/common"
 	grpc_dcmgr "github.com/Ankr-network/dccn-common/protos/dcmgr/v1/grpc"
 	"github.com/Ankr-network/dccn-daemon/task"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 )
 
 type taskCtx struct {
@@ -64,7 +63,7 @@ func taskMetering(r *task.Runner, dcName, namespace, server, wsEndpoint string) 
 
 func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCtx) error {
 	// try once to test connection, all tests should finish in 5s
-	stream, closeStream, err := dialStream(50000*time.Second, hubServer)
+	stream, closeStream, err := dialStream(5*time.Second, hubServer)
 	if err != nil {
 		return err
 	}
@@ -74,7 +73,7 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 	redial := true
 	for {
 		if redial {
-			stream, closeStream, err = dialStream(50000*time.Second, hubServer)
+			stream, closeStream, err = dialStream(5*time.Second, hubServer)
 			if err != nil {
 				glog.Errorln("client fail to receive task:", err)
 				time.Sleep(5 * time.Second)
@@ -204,11 +203,11 @@ func dialStream(timeout time.Duration, hubServer string) (grpc_dcmgr.DCStreamer_
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 	}
 
-	conn, err := grpc.DialContext(ctx, hubServer, grpc.WithInsecure(),
-		grpc.WithKeepaliveParams(keepalive.ClientParameters{ // TODO: dynamic config in config file
-			Time:    20 * time.Second,
-			Timeout: 5 * time.Second,
-		}))
+	conn, err := grpc.DialContext(ctx, hubServer, grpc.WithInsecure())
+		//grpc.WithKeepaliveParams(keepalive.ClientParameters{ // TODO: dynamic config in config file
+		//	Time:    20 * time.Second,
+		//	Timeout: 5 * time.Second,
+		//}))
 	if err != nil {
 		cancel()
 		return nil, nil, errors.Wrapf(err, "dail ankr hub %s", hubServer)
