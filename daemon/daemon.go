@@ -23,9 +23,12 @@ type taskCtx struct {
 	ctx    context.Context
 }
 
+var dataCenterName string
+
 // ServeTask will serve the task metering with blockchain logic
 func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
+	dataCenterName = dcName
 	runner, err := task.NewRunner(cfgpath, namespace, ingressHost)
 	if err != nil {
 		return err
@@ -149,7 +152,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 
 		case common_proto.Operation_TASK_CREATE:
 			images := strings.Split(task.Image, ",")
-			task.Status = common_proto.TaskStatus_RUNNING
+			task.Status = common_proto.TaskStatus_START_SUCCESS
        log.Printf(">>>>>>Operation_TASK_CREATE  task  %v", task)
 			glog.V(1).Infof("Operation_TASK_CREATE  task %v", task)
 			if err := r.CreateTasks(task.Name, images...); err != nil {
@@ -164,15 +167,14 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			send(chTask.stream, &common_proto.Event{
 				EventType: common_proto.Operation_TASK_CREATE,
 				OpMessage: &common_proto.Event_TaskFeedback{
-					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
+					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: "",
+						DataCenter: dataCenterName, Report: "", Status: task.Status}}})
 
-    case 5:
-		    log.Printf(">>>>>>Operation_TASK_UPDATE  task  %v", task)
 		case common_proto.Operation_TASK_UPDATE:
 			glog.V(1).Infof("Operation_TASK_UPDATE  task  %v", task)
 			// FIXME: hard code for no definition in protobuf
 			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
-			if err := r.UpdateTask(task.Name, task.Image, 2, 80, 80); err != nil {
+			if err := r.UpdateTask(task.Name, task.Image, uint32(task.Replica), 80, 80); err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_UPDATE_FAILED
 				chTask.Report = err.Error()
@@ -181,7 +183,8 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			send(chTask.stream, &common_proto.Event{
 				EventType: common_proto.Operation_TASK_UPDATE,
 				OpMessage: &common_proto.Event_TaskFeedback{
-					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
+					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: "",
+						DataCenter: dataCenterName, Report: "", Status: task.Status}}})
 
 		case common_proto.Operation_TASK_CANCEL:
 			task.Status = common_proto.TaskStatus_CANCELLED
@@ -194,7 +197,8 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			send(chTask.stream, &common_proto.Event{
 				EventType: common_proto.Operation_TASK_CANCEL,
 				OpMessage: &common_proto.Event_TaskFeedback{
-					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: task.Url, DataCenter: task.DataCenterId, Report: chTask.Report}}})
+					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: "",
+						DataCenter: dataCenterName, Report: "", Status: task.Status}}})
 		}
 	}
 }
