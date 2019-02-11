@@ -41,11 +41,11 @@ func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	return taskReciver(tasker, hubServer, dcName, taskCh)
 }
 
-func taskMetering(c *task.Tasker, dcName, namespace, server, wsEndpoint string) {
+func taskMetering(t *task.Tasker, dcName, namespace, server, wsEndpoint string) {
 	once := &sync.Once{}
 	tick := time.Tick(30 * time.Second)
 	for range tick {
-		metering, err := c.Metering()
+		metering, err := t.Metering()
 		if err != nil {
 			glog.Errorln("client fail to get metering:", err)
 			continue
@@ -66,7 +66,7 @@ func taskMetering(c *task.Tasker, dcName, namespace, server, wsEndpoint string) 
 	}
 }
 
-func taskReciver(c *task.Tasker, hubServer, dcName string, taskCh chan<- *taskCtx) error {
+func taskReciver(t *task.Tasker, hubServer, dcName string, taskCh chan<- *taskCtx) error {
 	// try once to test connection, all tests should finish in 5s
 	// todo remove such codes has no meaning
 	stream, closeStream, err := dialStream(5*time.Second, hubServer)
@@ -88,13 +88,13 @@ func taskReciver(c *task.Tasker, hubServer, dcName string, taskCh chan<- *taskCt
 			}
 
 			//regist dc  if connection why send heart beat failed ?
-			if err := heartBeat(r, dcName, stream); err != nil {
+			if err := heartBeat(t, dcName, stream); err != nil {
 				closeStream()
 			} else {
 				redial = false
 			}
 
-			go startHeartBeatThread(r, dcName, stream, &redial)
+			go startHeartBeatThread(t, dcName, stream, &redial)
 		}
 
 		if in, err := stream.Recv(); err == io.EOF {
@@ -118,11 +118,11 @@ func taskReciver(c *task.Tasker, hubServer, dcName string, taskCh chan<- *taskCt
 	}
 }
 
-func startHeartBeatThread(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient, redial *bool) {
+func startHeartBeatThread(t *task.Tasker, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient, redial *bool) {
 
 	for {
 		log.Printf("send heart beat\n")
-		if err := heartBeat(r, dcName, stream); err != nil {
+		if err := heartBeat(t, dcName, stream); err != nil {
 			log.Printf("send heart beat failed  %v\n", err)
 			*redial = true
 			return // stream error
@@ -133,7 +133,7 @@ func startHeartBeatThread(r *task.Runner, dcName string, stream grpc_dcmgr.DCStr
 	}
 }
 
-func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
+func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 	glog.Infoln("Task operator started.")
 	for {
 		chTask, ok := <-taskCh
@@ -153,7 +153,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			task.Status = common_proto.TaskStatus_START_SUCCESS
 			log.Printf(">>>>>>Operation_TASK_CREATE  task  %v", task)
 			glog.V(1).Infof("Operation_TASK_CREATE  task %v", task)
-			if err := r.CreateTasks(task.Name, images...); err != nil {
+			if err := t.CreateTasks(task.Name, images...); err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_START_FAILED
 				chTask.Report = err.Error()
@@ -172,7 +172,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 			glog.V(1).Infof("Operation_TASK_UPDATE  task  %v", task)
 			// FIXME: hard code for no definition in protobuf
 			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
-			if err := r.UpdateTask(task.Name, task.Image, uint32(task.Replica), 80, 80); err != nil {
+			if err := t.UpdateTask(task.Name, task.Image, uint32(task.Replica), 80, 80); err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_UPDATE_FAILED
 				chTask.Report = err.Error()
@@ -186,7 +186,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 
 		case common_proto.Operation_TASK_CANCEL:
 			task.Status = common_proto.TaskStatus_CANCELLED
-			if err := r.CancelTask(task.Name); err != nil {
+			if err := t.CancelTask(task.Name); err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_CANCEL_FAILED
 				chTask.Report = err.Error()
@@ -201,7 +201,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 	}
 }
 
-func heartBeat(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
+func heartBeat(t *task.Tasker, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
 	dataCenter := common_proto.DataCenter{
 		Name: dcName,
 	}
@@ -213,7 +213,7 @@ func heartBeat(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_Serve
 		},
 	}
 
-	metrics, err := c.Metrics()
+	metrics, err := t.Metrics()
 	if err != nil {
 		glog.V(1).Infoln(err)
 		dataCenter.Report = err.Error()
