@@ -1,4 +1,6 @@
+export GO111MODULE=on
 PROTO_FILES	= types/*.proto
+URL_BRANCH	= dc-dev.dccn.ankr.network
 LDFLAGS		= -ldflags \
 		 "-X main.version=$(shell git rev-parse --abbrev-ref HEAD) \
 		 -X main.commit=$(shell git rev-parse --short HEAD) \
@@ -10,7 +12,7 @@ build:
 	go build $(LDFLAGS)
 
 image:
-	docker build --rm -t dccn-daemon:latest .
+	docker build --rm --build-arg URL_BRANCH=${URL_BRANCH} -t dccn-daemon:latest .
 
 govet:
 	go vet ./...
