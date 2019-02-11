@@ -19,4 +19,7 @@ FROM alpine
 COPY --from=compiler /dccn-daemon/dccn-daemon /dccn-daemon
 RUN ln -s /dccn-daemon /usr/local/bin/dccn-daemon
 
+ARG URL_BRANCH
+ENV URL_BRANCH=${URL_BRANCH}
+
 CMD ["dccn-daemon","version"]
