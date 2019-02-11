@@ -3,18 +3,18 @@ package daemon
 import (
 	"context"
 	"io"
+	"log"
 	"strings"
 	"sync"
 	"time"
-  "log"
 
-	"github.com/Ankr-network/dccn-common/protos/common"
+	common_proto "github.com/Ankr-network/dccn-common/protos/common"
 	grpc_dcmgr "github.com/Ankr-network/dccn-common/protos/dcmgr/v1/grpc"
 	"github.com/Ankr-network/dccn-daemon/task"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-//	"google.golang.org/grpc/keepalive"
+	//	"google.golang.org/grpc/keepalive"
 )
 
 type taskCtx struct {
@@ -118,21 +118,19 @@ func taskReciver(r *task.Runner, hubServer, dcName string, taskCh chan<- *taskCt
 	}
 }
 
-func startHeartBeatThread(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient, redial *bool){
+func startHeartBeatThread(r *task.Runner, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient, redial *bool) {
 
-  for{
-	 log.Printf("send heart beat\n")
-	 if err := heartBeat(r, dcName, stream); err != nil {
-		  log.Printf("send heart beat failed  %v\n", err)
+	for {
+		log.Printf("send heart beat\n")
+		if err := heartBeat(r, dcName, stream); err != nil {
+			log.Printf("send heart beat failed  %v\n", err)
 			*redial = true
-		 return  // stream error
-	 } else {
-		 log.Printf("send heart beat ok \n", )
-		 time.Sleep(30 * time.Second)
-	 }
- }
-
-
+			return // stream error
+		} else {
+			log.Printf("send heart beat ok \n")
+			time.Sleep(30 * time.Second)
+		}
+	}
 }
 
 func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
@@ -153,7 +151,7 @@ func taskOperator(r *task.Runner, dcName string, taskCh <-chan *taskCtx) {
 		case common_proto.Operation_TASK_CREATE:
 			images := strings.Split(task.Image, ",")
 			task.Status = common_proto.TaskStatus_START_SUCCESS
-       log.Printf(">>>>>>Operation_TASK_CREATE  task  %v", task)
+			log.Printf(">>>>>>Operation_TASK_CREATE  task  %v", task)
 			glog.V(1).Infof("Operation_TASK_CREATE  task %v", task)
 			if err := r.CreateTasks(task.Name, images...); err != nil {
 				glog.V(1).Infoln(err)
@@ -233,7 +231,7 @@ func dialStream(timeout time.Duration, hubServer string) (grpc_dcmgr.DCStreamer_
 	// 	ctx, cancel = context.WithTimeout(ctx, timeout)
 	// }
 
-	 conn, err := grpc.DialContext(ctx, hubServer, grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, hubServer, grpc.WithInsecure())
 	// grpc.WithKeepaliveParams(keepalive.ClientParameters{ // TODO: dynamic config in config file
 	// 	Time:    20 * time.Second,
 	// 	Timeout: 60 * time.Second,
