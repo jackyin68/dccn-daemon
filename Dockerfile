@@ -7,12 +7,7 @@ WORKDIR /go/src/github.com/Ankr-network/dccn-daemon
 COPY . .
 
 # for ci runner, copy ssh private key
-COPY id_rsa /root/.ssh/id_rsa
-RUN ssh-keyscan github.com >> /root/.ssh/known_hosts \
-    && chmod go-w /root \
-    && chmod 700 /root/.ssh \
-    && chmod 600 /root/.ssh/id_rsa \
-    && dep ensure -v -vendor-only
+RUN dep ensure -v -vendor-only
 
 RUN go install -v -ldflags="-s -w \
     -X main.version=$(git rev-parse --abbrev-ref HEAD) \
