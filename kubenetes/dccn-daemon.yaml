@@ -16,5 +16,5 @@ spec:
       - name: dccn-daemon
         image: "815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn-daemon:feat"
         imagePullPolicy: Always
-        command: ["dccn-daemon"]
-        args: ["start","datacenter_name","-s","$URL_BRANCH","-p","50051","-n","test-deploy","-S","dccn-tendermint","-v2"]
+        command: ["sh"] # kubernetes bug: https://github.com/kubernetes/kubernetes/issues/57726
+        args: ["-c","dccn-daemon start datacenter_name -s $URL_BRANCH -p 50051 -n test-deploy -S dccn-tendermint -v2"]
