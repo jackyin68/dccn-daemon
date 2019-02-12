@@ -24,10 +24,12 @@ spec:
       labels:
         app: dccn-tendermint
     spec:
+      imagePullSecrets:
+      - name: aws-ecr
       containers:
       - name: tendermint
-        image: tendermint/tendermint
-        imagePullPolicy: IfNotPresent
+        image: 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn-tendermint:feat
+        imagePullPolicy: Always
         command: ["/bin/sh","-c"]
         args: ["/usr/bin/tendermint init && /usr/bin/tendermint node --proxy_app=kvstore"]
         ports:
