@@ -6,10 +6,8 @@ require (
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
-	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gogo/protobuf v1.1.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/mock v1.2.0
 	github.com/golang/protobuf v1.2.0
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect

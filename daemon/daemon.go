@@ -153,15 +153,25 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			task.Status = common_proto.TaskStatus_START_SUCCESS
 			log.Printf(">>>>>>Operation_TASK_CREATE  task  %v", task)
 			glog.V(1).Infof("Operation_TASK_CREATE  task %v", task)
-			if err := t.CreateTasks(task.Name, images...); err != nil {
+
+			var err error
+			switch task.Type {
+			case common_proto.TaskType_DEPLOYMENT:
+				err = t.CreateTasks(task.Name, images...)
+			case common_proto.TaskType_JOB:
+				err = t.CreateJobs(task.Name, "", images...)
+			case common_proto.TaskType_CRONJOB:
+				err = t.CreateJobs(task.Name, task.Schedule, images...)
+			}
+			if err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_START_FAILED
 				chTask.Report = err.Error()
 				glog.V(1).Infof("error   : %s \n", chTask.Report)
 			} else {
-
 				glog.V(1).Infof("no error  when create task  : %s \n", chTask.Report)
 			}
+
 			send(chTask.stream, &common_proto.Event{
 				EventType: common_proto.Operation_TASK_CREATE,
 				OpMessage: &common_proto.Event_TaskFeedback{
@@ -172,7 +182,17 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			glog.V(1).Infof("Operation_TASK_UPDATE  task  %v", task)
 			// FIXME: hard code for no definition in protobuf
 			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
-			if err := t.UpdateTask(task.Name, task.Image, uint32(task.Replica), 80, 80); err != nil {
+
+			var err error
+			switch task.Type {
+			case common_proto.TaskType_DEPLOYMENT:
+				err = t.UpdateTask(task.Name, task.Image, uint32(task.Replica), 80, 80)
+			case common_proto.TaskType_JOB:
+				err = t.CreateJobs(task.Name, "", task.Image)
+			case common_proto.TaskType_CRONJOB:
+				err = t.CreateJobs(task.Name, task.Schedule, task.Image)
+			}
+			if err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_UPDATE_FAILED
 				chTask.Report = err.Error()
@@ -186,7 +206,17 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 
 		case common_proto.Operation_TASK_CANCEL:
 			task.Status = common_proto.TaskStatus_CANCELLED
-			if err := t.CancelTask(task.Name); err != nil {
+
+			var err error
+			switch task.Type {
+			case common_proto.TaskType_DEPLOYMENT:
+				err = t.CancelTask(task.Name)
+			case common_proto.TaskType_JOB:
+				err = t.CancelJob(task.Name, "")
+			case common_proto.TaskType_CRONJOB:
+				err = t.CancelJob(task.Name, "")
+			}
+			if err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_CANCEL_FAILED
 				chTask.Report = err.Error()
