@@ -63,9 +63,11 @@ jobs:
             done
 
             kops export kubecfg --name ${K8S_CLUSTER}.k8s.ankr.network --state s3://kops.${K8S_CLUSTER}.config
-            kubectl patch deployment/dccn-daemon -p \
-            '{"spec":{"template":{"spec":{"containers":[{"name":"dccn-daemon","image":"'${AWS_ACCOUNT}'.dkr.ecr.'${AWS_REGION}'.amazonaws.com/dccn-daemon:'${BRANCH_NAME}''$DATE'"}]}}}}'
-            if ! kubectl rollout status deploy/dccn-daemon; then
+            kubectl patch --local -o yaml -p \
+            '{"spec":{"template":{"spec":{"containers":[{"name":"dccn-daemon","image":"'${AWS_ACCOUNT}'.dkr.ecr.'${AWS_REGION}'.amazonaws.com/dccn-daemon:'${BRANCH_NAME}''$DATE'"}]}}}}' \
+            -f ./kubenetes/dccn-daemon.yaml > ./kubenetes/dccn-daemon-latest.yaml
+            kubectl apply -f ./kubenetes/dccn-daemon-latest.yaml
+            if ! kubectl rollout status deploy/dccn-daemon --watch=true --timeout=60s; then
               echo "Deploy failed, roll back to previous version"
               kubectl rollout undo deploy/dccn-daemon 
             fi
