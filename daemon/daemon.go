@@ -161,6 +161,9 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				err = t.CreateJobs(task.Id, "", images...)
 			case common_proto.TaskType_CRONJOB:
 				err = t.CreateJobs(task.Id, task.Schedule, images...)
+			default:
+				err = errors.Errorf("INVALID TASK TYPE: %s", task.Type)
+				glog.Errorln(err)
 			}
 			if err != nil {
 				glog.V(1).Infoln(err)
@@ -190,6 +193,9 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				err = t.CreateJobs(task.Id, "", task.Image)
 			case common_proto.TaskType_CRONJOB:
 				err = t.CreateJobs(task.Id, task.Schedule, task.Image)
+			default:
+				err = errors.Errorf("INVALID TASK TYPE: %s", task.Type)
+				glog.Errorln(err)
 			}
 			if err != nil {
 				glog.V(1).Infoln(err)
@@ -204,7 +210,7 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 						DataCenter: dataCenterName, Report: "", Status: task.Status}}})
 
 		case common_proto.Operation_TASK_CANCEL:
-			glog.V(1).Infof(""Operation_TASK_CANCEL  task  %v"  task  %v", task)
+			glog.V(1).Infof("Operation_TASK_CANCEL  task  %v", task)
 			task.Status = common_proto.TaskStatus_CANCELLED
 
 			var err error
@@ -215,6 +221,9 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				err = t.CancelJob(task.Id, "")
 			case common_proto.TaskType_CRONJOB:
 				err = t.CancelJob(task.Id, "")
+			default:
+				err = errors.Errorf("INVALID TASK TYPE: %s", task.Type)
+				glog.Errorln(err)
 			}
 			if err != nil {
 				glog.V(1).Infoln(err)
