@@ -157,11 +157,11 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			var err error
 			switch task.Type {
 			case common_proto.TaskType_DEPLOYMENT:
-				err = t.CreateTasks(task.Name, images...)
+				err = t.CreateTasks(task.Id, images...)
 			case common_proto.TaskType_JOB:
-				err = t.CreateJobs(task.Name, "", images...)
+				err = t.CreateJobs(task.Id, "", images...)
 			case common_proto.TaskType_CRONJOB:
-				err = t.CreateJobs(task.Name, task.Schedule, images...)
+				err = t.CreateJobs(task.Id, task.Schedule, images...)
 			}
 			if err != nil {
 				glog.V(1).Infoln(err)
@@ -186,11 +186,11 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			var err error
 			switch task.Type {
 			case common_proto.TaskType_DEPLOYMENT:
-				err = t.UpdateTask(task.Name, task.Image, uint32(task.Replica), 80, 80)
+				err = t.UpdateTask(task.Id, task.Image, uint32(task.Replica), 80, 80)
 			case common_proto.TaskType_JOB:
-				err = t.CreateJobs(task.Name, "", task.Image)
+				err = t.CreateJobs(task.Id, "", task.Image)
 			case common_proto.TaskType_CRONJOB:
-				err = t.CreateJobs(task.Name, task.Schedule, task.Image)
+				err = t.CreateJobs(task.Id, task.Schedule, task.Image)
 			}
 			if err != nil {
 				glog.V(1).Infoln(err)
@@ -210,11 +210,11 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			var err error
 			switch task.Type {
 			case common_proto.TaskType_DEPLOYMENT:
-				err = t.CancelTask(task.Name)
+				err = t.CancelTask(task.Id)
 			case common_proto.TaskType_JOB:
-				err = t.CancelJob(task.Name, "")
+				err = t.CancelJob(task.Id, "")
 			case common_proto.TaskType_CRONJOB:
-				err = t.CancelJob(task.Name, "")
+				err = t.CancelJob(task.Id, "")
 			}
 			if err != nil {
 				glog.V(1).Infoln(err)
