@@ -141,7 +141,6 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			return
 		}
 		task := chTask.GetTask()
-		glog.V(1).Infof("Operation_TASK_CREATE  task  %v", task)
 
 		switch chTask.EventType {
 		case common_proto.Operation_HEARTBEAT:
@@ -205,6 +204,7 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 						DataCenter: dataCenterName, Report: "", Status: task.Status}}})
 
 		case common_proto.Operation_TASK_CANCEL:
+			glog.V(1).Infof(""Operation_TASK_CANCEL  task  %v"  task  %v", task)
 			task.Status = common_proto.TaskStatus_CANCELLED
 
 			var err error

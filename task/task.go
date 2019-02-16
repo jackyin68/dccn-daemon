@@ -29,7 +29,7 @@ func (t *Tasker) CreateTasks(name string, images ...string) error {
 		}
 	}
 
-	return t.run(kubes)
+	return t.updateOrCreate(kubes)
 }
 
 func (t *Tasker) CreateJobs(name, crontab string, images ...string) error {
@@ -58,7 +58,7 @@ func (t *Tasker) CreateJobs(name, crontab string, images ...string) error {
 		}
 	}
 
-	return t.run(kubes)
+	return t.updateOrCreate(kubes)
 }
 
 func (t *Tasker) UpdateTask(name, image string, replicas, internalPort, externalPort uint32) error {
@@ -80,7 +80,7 @@ func (t *Tasker) UpdateTask(name, image string, replicas, internalPort, external
 	kubes = append(kubes, kube.NewDeployment(t.ns, service))
 	kubes = append(kubes, kube.NewService(t.ns, service, service.Expose[0]))
 	kubes = append(kubes, kube.NewIngress(t.ns, service, service.Expose[0]))
-	return t.run(kubes)
+	return t.updateOrCreate(kubes)
 }
 
 func (t *Tasker) CancelTask(name string) error {

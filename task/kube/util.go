@@ -22,7 +22,7 @@ import (
 // For unit test
 var mockKube Kube
 
-// Kubenetes actions interface
+// Kubernetes actions interface
 //go:generate mockgen -package $GOPACKAGE -destination mock_kube.go github.com/Ankr-network/dccn-daemon/task/kube Kube
 type Kube interface {
 	Create(c *Client) (err error)

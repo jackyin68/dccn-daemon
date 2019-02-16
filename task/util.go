@@ -2,6 +2,7 @@ package task
 
 import (
 	"github.com/Ankr-network/dccn-daemon/task/kube"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 )
 
@@ -23,20 +24,24 @@ func NewTasker(cfgpath, namespace, ingressHost string) (*Tasker, error) {
 	}, nil
 }
 
-func (t *Tasker) run(kubes []kube.Kube) error {
+func (t *Tasker) updateOrCreate(kubes []kube.Kube) error {
 	rollbacks := make([]func(*kube.Client) error, 0, len(kubes))
 	for i := range kubes {
 		rollback, err := kubes[i].Update(t.client)
 		// error has been wrapped, k8s standard check method not work
 		if kube.IsNotFound(err) {
-			errors.New("message string")
 			if err := kubes[i].Create(t.client); err != nil {
+				glog.V(1).Infof("execute %T create fail: %s", kubes[i], err)
 				return t.rollback(rollbacks, err)
 			}
+			glog.V(1).Infof("execute %T create success", kubes[i])
 			rollback = kubes[i].Delete
 
 		} else if err != nil {
+			glog.V(1).Infof("execute %T update fail: %s", kubes[i], err)
 			return t.rollback(rollbacks, err)
+		} else {
+			glog.V(1).Infof("execute %T update success", kubes[i])
 		}
 
 		if rollback != nil {
