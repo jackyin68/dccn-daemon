@@ -7,10 +7,17 @@ metadata:
 spec:
   selector:
     app: dccn-tendermint
+  type: ClusterIP
   ports:
-  - name: tendermint-rpc
+  - name: p2p
+    port: 26656
+    targetPort: 26656
+  - name: rpc
     port: 26657
     targetPort: 26657
+  - name: abci
+    port: 26658
+    targetPort: 26658
 
 ---
 apiVersion: apps/v1beta1
@@ -24,12 +31,16 @@ spec:
       labels:
         app: dccn-tendermint
     spec:
+      imagePullSecrets:
+      - name: aws-ecr
       containers:
       - name: tendermint
-        image: tendermint/tendermint
-        imagePullPolicy: IfNotPresent
-        command: ["/bin/sh","-c"]
-        args: ["/usr/bin/tendermint init && /usr/bin/tendermint node --proxy_app=kvstore"]
+        image: 815280425737.dkr.ecr.us-west-2.amazonaws.com/dccn-tendermint:feat
+        imagePullPolicy: Always
         ports:
-        - containerPort: 26657
-          name: tendermint-rpc
+        - name: p2p
+          containerPort: 26656
+        - name: rpc
+          containerPort: 26657
+        - name: abci
+          containerPort: 26658
