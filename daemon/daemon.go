@@ -19,16 +19,19 @@ import (
 )
 
 type taskCtx struct {
-	*common_proto.Event
+	*common_proto.DCStream
 	stream grpc_dcmgr.DCStreamer_ServerStreamClient
 	ctx    context.Context
 }
 
 var dataCenterName string
+var startTimestamp uint64
+var modTimestamp uint64
 
 // ServeTask will serve the task metering with blockchain logic
 func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
+	startTimestamp = uint64(time.Now().UnixNano())
 	tasker, err := task.NewTasker(cfgpath, namespace, ingressHost)
 	if err != nil {
 		return err
@@ -109,10 +112,10 @@ func taskReciver(t *task.Tasker, hubServer, dcName string, taskCh chan<- *taskCt
 			glog.Errorln("Failed to receive task:", err)
 
 		} else {
-			glog.V(1).Infof("new task %s: %v", in.EventType, in)
+			glog.V(1).Infof("new task: %v", in)
 			taskCh <- &taskCtx{
-				Event:  in,
-				stream: stream,
+				DCStream: in,
+				stream:   stream,
 			}
 		}
 	}
@@ -140,47 +143,44 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 		if !ok {
 			return
 		}
+		modTimestamp = uint64(time.Now().UnixNano())
+
 		task := chTask.GetTask()
+		if task.GetTypeDeployment() == nil && task.GetTypeJob() == nil && task.GetTypeCronJob() == nil {
+			glog.Errorln("invalid type data, IGNORE THIS REQUEST")
+			continue
+		}
+		var (
+			deployment = task.GetTypeDeployment()
+			job        = task.GetTypeJob()
+			cronjob    = task.GetTypeCronJob()
+			attr       = task.GetAttributes()
+			err        error
+		)
 
-		switch chTask.EventType {
-		case common_proto.Operation_HEARTBEAT:
-			//heartBeat(r, dcName, chTask.stream)
-			glog.Infoln("Operation_HEARTBEAT received")
-
-		case common_proto.Operation_TASK_CREATE:
-			images := strings.Split(task.Image, ",")
-			task.Status = common_proto.TaskStatus_START_SUCCESS
-			log.Printf(">>>>>>Operation_TASK_CREATE  task  %v", task)
-			glog.V(1).Infof("Operation_TASK_CREATE  task %v", task)
-
-			var err error
+		switch chTask.OpType {
+		case common_proto.DCOperation_TASK_CREATE:
 			switch task.Type {
 			case common_proto.TaskType_DEPLOYMENT:
-				err = t.CreateTasks(task.Id, images...)
+				err = t.CreateTasks(task.Id, strings.Split(deployment.Image, ",")...)
 			case common_proto.TaskType_JOB:
-				err = t.CreateJobs(task.Id, "", images...)
+				err = t.CreateJobs(task.Id, "", job.Image)
 			case common_proto.TaskType_CRONJOB:
-				err = t.CreateJobs(task.Id, task.Schedule, images...)
+				err = t.CreateJobs(task.Id, cronjob.Schedule, cronjob.Image)
 			default:
 				err = errors.Errorf("INVALID TASK TYPE: %s", task.Type)
 				glog.Errorln(err)
 			}
 			if err != nil {
-				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_START_FAILED
-				chTask.Report = err.Error()
-				glog.V(1).Infof("error   : %s \n", chTask.Report)
+				glog.V(1).Infoln(err)
 			} else {
-				glog.V(1).Infof("no error  when create task  : %s \n", chTask.Report)
+				task.Status = common_proto.TaskStatus_START_SUCCESS
 			}
 
-			send(chTask.stream, &common_proto.Event{
-				EventType: common_proto.Operation_TASK_CREATE,
-				OpMessage: &common_proto.Event_TaskFeedback{
-					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: "",
-						DataCenter: dataCenterName, Report: "", Status: task.Status}}})
+			send(chTask.stream, chTask.DCStream)
 
-		case common_proto.Operation_TASK_UPDATE:
+		case common_proto.DCOperation_TASK_UPDATE:
 			glog.V(1).Infof("Operation_TASK_UPDATE  task  %v", task)
 			// FIXME: hard code for no definition in protobuf
 			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
@@ -188,11 +188,11 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			var err error
 			switch task.Type {
 			case common_proto.TaskType_DEPLOYMENT:
-				err = t.UpdateTask(task.Id, task.Image, uint32(task.Replica), 80, 80)
+				err = t.UpdateTask(task.Id, deployment.Image, uint32(attr.Replica), 80, 80)
 			case common_proto.TaskType_JOB:
-				err = t.CreateJobs(task.Id, "", task.Image)
+				err = t.CreateJobs(task.Id, "", job.Image)
 			case common_proto.TaskType_CRONJOB:
-				err = t.CreateJobs(task.Id, task.Schedule, task.Image)
+				err = t.CreateJobs(task.Id, cronjob.Schedule, cronjob.Image)
 			default:
 				err = errors.Errorf("INVALID TASK TYPE: %s", task.Type)
 				glog.Errorln(err)
@@ -200,16 +200,13 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			if err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_UPDATE_FAILED
-				chTask.Report = err.Error()
+			} else {
+				task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
 			}
 
-			send(chTask.stream, &common_proto.Event{
-				EventType: common_proto.Operation_TASK_UPDATE,
-				OpMessage: &common_proto.Event_TaskFeedback{
-					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: "",
-						DataCenter: dataCenterName, Report: "", Status: task.Status}}})
+			send(chTask.stream, chTask.DCStream)
 
-		case common_proto.Operation_TASK_CANCEL:
+		case common_proto.DCOperation_TASK_CANCEL:
 			glog.V(1).Infof("Operation_TASK_CANCEL  task  %v", task)
 			task.Status = common_proto.TaskStatus_CANCELLED
 
@@ -228,43 +225,49 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			if err != nil {
 				glog.V(1).Infoln(err)
 				task.Status = common_proto.TaskStatus_CANCEL_FAILED
-				chTask.Report = err.Error()
+			} else {
+				task.Status = common_proto.TaskStatus_CANCELLED
 			}
 
-			send(chTask.stream, &common_proto.Event{
-				EventType: common_proto.Operation_TASK_CANCEL,
-				OpMessage: &common_proto.Event_TaskFeedback{
-					TaskFeedback: &common_proto.TaskFeedback{TaskId: task.Id, Url: "",
-						DataCenter: dataCenterName, Report: "", Status: task.Status}}})
+			send(chTask.stream, chTask.DCStream)
 		}
 	}
 }
 
 func heartBeat(t *task.Tasker, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
-	dataCenter := common_proto.DataCenter{
-		Name: dcName,
-	}
-
-	var message = common_proto.Event{
-		EventType: common_proto.Operation_HEARTBEAT,
-		OpMessage: &common_proto.Event_DataCenter{
-			DataCenter: &dataCenter,
+	message := common_proto.DCStream_DataCenter{
+		DataCenter: &common_proto.DataCenter{
+			Status: common_proto.DCStatus_AVAILABLE,
+			DcAttributes: &common_proto.DataCenterAttributes{
+				WalletAddress:    "",
+				CreationDate:     startTimestamp,
+				LastModifiedDate: modTimestamp,
+			},
+			DcHeartbeatReport: &common_proto.DCHeartbeatReport{
+				Metrics:    "",
+				Report:     "",
+				ReportTime: uint64(time.Now().UnixNano()),
+			},
 		},
 	}
 
-	metrics, err := t.Metrics()
-	if err != nil {
+	if metrics, err := t.Metrics(); err != nil {
 		glog.V(1).Infoln(err)
-		dataCenter.Report = err.Error()
 	} else {
-		data, err := json.Marshal(metrics)
-		if err != nil {
-			dataCenter.Report = err.Error()
-		}
-		dataCenter.Report = string(data)
+		data, _ := json.Marshal(metrics)
+		message.DataCenter.DcHeartbeatReport.Metrics = string(data)
 	}
 
-	return send(stream, &message)
+	if tasks, err := t.ListTask(); err != nil {
+		glog.V(1).Infoln(err)
+	} else {
+		message.DataCenter.DcHeartbeatReport.Report = strings.Join(tasks, "\n")
+	}
+
+	return send(stream, &common_proto.DCStream{
+		OpType:    common_proto.DCOperation_HEARTBEAT,
+		OpPayload: &message,
+	})
 }
 
 func dialStream(timeout time.Duration, hubServer string) (grpc_dcmgr.DCStreamer_ServerStreamClient, func(), error) {
@@ -303,12 +306,12 @@ func dialStream(timeout time.Duration, hubServer string) (grpc_dcmgr.DCStreamer_
 	}, nil
 }
 
-func send(stream grpc_dcmgr.DCStreamer_ServerStreamClient, msg *common_proto.Event) error {
+func send(stream grpc_dcmgr.DCStreamer_ServerStreamClient, msg *common_proto.DCStream) error {
 	if err := stream.Send(msg); err != nil {
 		glog.V(2).Infof("send (%v) fail: %s", *msg, err)
 		return err
 	}
 
-	glog.V(3).Infof("send %s success", msg.EventType)
+	glog.V(3).Infof("send %s success", msg.OpType)
 	return nil
 }
