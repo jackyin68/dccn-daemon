@@ -183,9 +183,6 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			}
 
 			log.Printf("create task %+v \n ", task)
-			if err == nil {
-				err = errors.New("")
-			}
 
 			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
 				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
@@ -215,10 +212,6 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
 			}
 
-			if err == nil {
-				err = errors.New("")
-			}
-
 			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
 				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
 			send(chTask.stream, chTask.DCStream)
@@ -245,12 +238,13 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			} else {
 				task.Status = common_proto.TaskStatus_CANCELLED
 			}
-			if err == nil {
-				err = errors.New("")
-			}
 
+			report := ""
+			if err != nil {
+				report = err.Error()
+			}
 			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
-				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
+				TaskReport: &common_proto.TaskReport{Task: task, Report: report}}
 			send(chTask.stream, chTask.DCStream)
 		}
 	}
