@@ -31,6 +31,7 @@ var modTimestamp uint64
 // ServeTask will serve the task metering with blockchain logic
 func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
+	dataCenterName = dcName
 	startTimestamp = uint64(time.Now().UnixNano())
 	tasker, err := task.NewTasker(cfgpath, namespace, ingressHost)
 	if err != nil {
@@ -150,6 +151,8 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			glog.Errorln("invalid type data, IGNORE THIS REQUEST")
 			continue
 		}
+		task.DataCenterName = dataCenterName
+
 		var (
 			deployment = task.GetTypeDeployment()
 			job        = task.GetTypeJob()
@@ -243,6 +246,8 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 func heartBeat(t *task.Tasker, dcName string, stream grpc_dcmgr.DCStreamer_ServerStreamClient) error {
 	message := common_proto.DCStream_DataCenter{
 		DataCenter: &common_proto.DataCenter{
+			Id:     "",
+			Name:   dataCenterName,
 			Status: common_proto.DCStatus_AVAILABLE,
 			DcAttributes: &common_proto.DataCenterAttributes{
 				WalletAddress:    "",
