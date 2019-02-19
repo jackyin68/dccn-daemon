@@ -160,6 +160,7 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			attr       = task.GetAttributes()
 			err        error
 		)
+		err = errors.New("")
 
 		switch chTask.OpType {
 		case common_proto.DCOperation_TASK_CREATE:
@@ -179,6 +180,11 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				glog.V(1).Infoln(err)
 			} else {
 				task.Status = common_proto.TaskStatus_START_SUCCESS
+			}
+
+			log.Printf("create task %+v \n ", task)
+			if err == nil {
+				err = errors.New("")
 			}
 
 			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
@@ -209,6 +215,10 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
 			}
 
+			if err == nil {
+				err = errors.New("")
+			}
+
 			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
 				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
 			send(chTask.stream, chTask.DCStream)
@@ -234,6 +244,9 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_CANCEL_FAILED
 			} else {
 				task.Status = common_proto.TaskStatus_CANCELLED
+			}
+			if err == nil {
+				err = errors.New("")
 			}
 
 			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
