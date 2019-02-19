@@ -1,8 +1,7 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-github.com/Ankr-network/dccn-common v0.0.0-20190214040924-15998e8f244c/go.mod h1:WUt3X9WvObUhiLKzv6qb5rueU0URYmk0AHUuQ3shn6E=
-github.com/Ankr-network/dccn-common v0.0.0-20190218091416-b7b3434d8f8d h1:oirAUrd/drJ0QbMHXanKtmKxcglFxwqBUVghJmGLYWk=
-github.com/Ankr-network/dccn-common v0.0.0-20190218091416-b7b3434d8f8d/go.mod h1:WUt3X9WvObUhiLKzv6qb5rueU0URYmk0AHUuQ3shn6E=
+github.com/Ankr-network/dccn-common v0.0.0-20190219033228-501202cceece h1:oxxlj7h7y0fCKpkwkq2j/+y+tIo2bi59B0KvQL0fB3Q=
+github.com/Ankr-network/dccn-common v0.0.0-20190219033228-501202cceece/go.mod h1:WUt3X9WvObUhiLKzv6qb5rueU0URYmk0AHUuQ3shn6E=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=

@@ -178,6 +178,8 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_START_SUCCESS
 			}
 
+			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
+				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
 			send(chTask.stream, chTask.DCStream)
 
 		case common_proto.DCOperation_TASK_UPDATE:
@@ -204,6 +206,8 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
 			}
 
+			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
+				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
 			send(chTask.stream, chTask.DCStream)
 
 		case common_proto.DCOperation_TASK_CANCEL:
@@ -229,6 +233,8 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_CANCELLED
 			}
 
+			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
+				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
 			send(chTask.stream, chTask.DCStream)
 		}
 	}
