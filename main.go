@@ -110,6 +110,7 @@ func startCmd() *cobra.Command {
 	tendermintWsEndpoint := cmd.PersistentFlags().StringP("tendermint-websocket-endpoint", "W", "/websocket", "special tendermint websocket endpoint")
 
 	cmd.PreRun = func(*cobra.Command, []string) {
+		glog.Infoln("version:", version, "commit:", commit, "date:", date)
 		glog.Infoln("Starting with cmd:", os.Args)
 	}
 
