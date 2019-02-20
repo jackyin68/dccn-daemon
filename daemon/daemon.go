@@ -160,7 +160,6 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 			attr       = task.GetAttributes()
 			err        error
 		)
-		err = errors.New("")
 
 		switch chTask.OpType {
 		case common_proto.DCOperation_TASK_CREATE:
@@ -182,18 +181,7 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_START_SUCCESS
 			}
 
-			log.Printf("create task %+v \n ", task)
-
-			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
-				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
-			send(chTask.stream, chTask.DCStream)
-
 		case common_proto.DCOperation_TASK_UPDATE:
-			glog.V(1).Infof("Operation_TASK_UPDATE  task  %v", task)
-			// FIXME: hard code for no definition in protobuf
-			task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
-
-			var err error
 			switch task.Type {
 			case common_proto.TaskType_DEPLOYMENT:
 				err = t.UpdateTask(task.Id, deployment.Image, uint32(attr.Replica), 80, 80)
@@ -212,15 +200,7 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_UPDATE_SUCCESS
 			}
 
-			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
-				TaskReport: &common_proto.TaskReport{Task: task, Report: err.Error()}}
-			send(chTask.stream, chTask.DCStream)
-
 		case common_proto.DCOperation_TASK_CANCEL:
-			glog.V(1).Infof("Operation_TASK_CANCEL  task  %v", task)
-			task.Status = common_proto.TaskStatus_CANCELLED
-
-			var err error
 			switch task.Type {
 			case common_proto.TaskType_DEPLOYMENT:
 				err = t.CancelTask(task.Id)
@@ -239,14 +219,15 @@ func taskOperator(t *task.Tasker, dcName string, taskCh <-chan *taskCtx) {
 				task.Status = common_proto.TaskStatus_CANCELLED
 			}
 
-			report := ""
-			if err != nil {
-				report = err.Error()
-			}
-			chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
-				TaskReport: &common_proto.TaskReport{Task: task, Report: report}}
-			send(chTask.stream, chTask.DCStream)
 		}
+
+		report := ""
+		if err != nil {
+			report = err.Error()
+		}
+		chTask.DCStream.OpPayload = &common_proto.DCStream_TaskReport{
+			TaskReport: &common_proto.TaskReport{Task: task, Report: report}}
+		send(chTask.stream, chTask.DCStream)
 	}
 }
 
