@@ -48,6 +48,7 @@ func main() {
 	rootCmd.AddCommand(taskCmd())
 	rootCmd.AddCommand(startCmd())
 	rootCmd.AddCommand(blockchainCmd())
+	rootCmd.AddCommand(metricCmd())
 	rootCmd.Execute()
 }
 
@@ -62,6 +63,33 @@ func versionCmd() *cobra.Command {
 		fmt.Println("Commit:", commit)
 		fmt.Println("Compile Date:", date)
 	}
+	return cmd
+}
+
+func metricCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "metric",
+		Short: "metric daemon server",
+		Long:  "metric a long running server to handle ankr-hub requests",
+	}
+
+	ns := cmd.Flags().StringP("namespace", "n", apiv1.NamespaceDefault, "kubernetes namespace")
+	host := cmd.Flags().String("ingress-host", "localhost", "kubernetes ingress host")
+	cfgpath := cmd.Flags().String("k8s-cfg", kubeCfg, "kubernetes config")
+
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		client, err := task.NewTasker(*cfgpath, *ns, *host)
+		exitOnErr(err)
+
+		metrics, err := client.Metrics()
+		exitOnErr(err)
+
+		data, err := json.MarshalIndent(metrics, "", "    ")
+		exitOnErr(err)
+
+		fmt.Printf("%s\n", data)
+	}
+
 	return cmd
 }
 
@@ -82,6 +110,7 @@ func startCmd() *cobra.Command {
 	tendermintWsEndpoint := cmd.PersistentFlags().StringP("tendermint-websocket-endpoint", "W", "/websocket", "special tendermint websocket endpoint")
 
 	cmd.PreRun = func(*cobra.Command, []string) {
+		glog.Infoln("version:", version, "commit:", commit, "date:", date)
 		glog.Infoln("Starting with cmd:", os.Args)
 	}
 
@@ -125,10 +154,10 @@ func taskCmd() *cobra.Command {
 		Long:  "create a new deploy task with your images",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			exitOnErr(runner.CreateTasks(args[0], args[1:]...))
+			exitOnErr(client.CreateTasks(args[0], args[1:]...))
 		},
 	})
 
@@ -141,10 +170,10 @@ func taskCmd() *cobra.Command {
 			replicas, err := strconv.ParseUint(args[2], 10, 32)
 			exitOnErr(err)
 
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			exitOnErr(runner.UpdateTask(args[0], args[1], uint32(replicas), 80, 80))
+			exitOnErr(client.UpdateTask(args[0], args[1], uint32(replicas), 80, 80))
 		},
 	})
 
@@ -154,10 +183,10 @@ func taskCmd() *cobra.Command {
 		Long:  "delete a exist task",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			exitOnErr(runner.CancelTask(args[0]))
+			exitOnErr(client.CancelTask(args[0]))
 		},
 	})
 
@@ -166,15 +195,63 @@ func taskCmd() *cobra.Command {
 		Short: "list tasks",
 		Long:  "list all tasks running",
 		Run: func(cmd *cobra.Command, args []string) {
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			tasks, err := runner.ListTask()
+			tasks, err := client.ListTask()
 			exitOnErr(err)
 
 			for _, task := range tasks {
 				fmt.Println(task)
 			}
+		},
+	})
+
+	return cmd
+}
+
+func jobCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "job",
+		Short: "run single job",
+		Long:  "job is for run a single job in command line",
+	}
+
+	ns := cmd.PersistentFlags().StringP("namespace", "n", apiv1.NamespaceDefault, "kubernetes namespace")
+	host := cmd.PersistentFlags().String("ingress-host", "localhost", "kubernetes ingress host")
+	cfgpath := cmd.PersistentFlags().String("k8s-cfg", kubeCfg, "kubernetes config")
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "create <name> <images> [crontab]",
+		Short: "create (cron)job",
+		Long:  "create a new (cron)job with your images",
+		Args:  cobra.MinimumNArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			exitOnErr(err)
+
+			crontab := ""
+			if len(args) >= 3 {
+				crontab = args[2]
+			}
+			exitOnErr(client.CreateJobs(args[0], crontab, args[1:]...))
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "delete <name> [crontab]",
+		Short: "delete exist (cron)job",
+		Long:  "delete a exist (cron)job",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			exitOnErr(err)
+
+			crontab := ""
+			if len(args) >= 3 {
+				crontab = args[2]
+			}
+			exitOnErr(client.CancelJob(args[0], crontab))
 		},
 	})
 
@@ -202,10 +279,10 @@ func blockchainCmd() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			// collect data
-			runner, err := task.NewRunner(*cfgpath, *ns, *host)
+			clientTask, err := task.NewTasker(*cfgpath, *ns, *host)
 			exitOnErr(err)
 
-			metering, err := runner.Metering()
+			metering, err := clientTask.Metering()
 			exitOnErr(err)
 
 			data, err := json.Marshal(metering)
