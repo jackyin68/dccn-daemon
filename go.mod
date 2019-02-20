@@ -1,7 +1,7 @@
 module github.com/Ankr-network/dccn-daemon
 
 require (
-	github.com/Ankr-network/dccn-common v0.0.0-20190220003020-40ca24520c55 // 149
+	github.com/Ankr-network/dccn-common v0.0.0-20190220022911-db71ec855cc7 // 149
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/btcsuite/btcutil v0.0.0-20180706230648-ab6388e0c60a // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
