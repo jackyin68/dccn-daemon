@@ -4,6 +4,7 @@ github.com/Ankr-network/dccn-common v0.0.0-20190210065120-39baa7303758 h1:n2UlHt
 github.com/Ankr-network/dccn-common v0.0.0-20190210065120-39baa7303758/go.mod h1:WUt3X9WvObUhiLKzv6qb5rueU0URYmk0AHUuQ3shn6E=
 github.com/Ankr-network/dccn-common v0.0.0-20190214040924-15998e8f244c h1:IXgHww+HFtMbQHEY26643XdCeYgFIqKDF/vCqdwxwG8=
 github.com/Ankr-network/dccn-common v0.0.0-20190214040924-15998e8f244c/go.mod h1:WUt3X9WvObUhiLKzv6qb5rueU0URYmk0AHUuQ3shn6E=
+github.com/Ankr-network/dccn-common v0.0.0-20190220022911-db71ec855cc7/go.mod h1:WUt3X9WvObUhiLKzv6qb5rueU0URYmk0AHUuQ3shn6E=
 github.com/VividCortex/gohistogram v1.0.0 h1:6+hBz+qvs0JOrrNhhmR7lFxo5sINxBCGXrdtl/UvroE=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
