@@ -78,7 +78,7 @@ func metricCmd() *cobra.Command {
 	cfgpath := cmd.Flags().String("k8s-cfg", kubeCfg, "kubernetes config")
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
-		client, err := task.NewTasker(*cfgpath, *ns, *host)
+		client, err := task.NewTasker("", *cfgpath, *ns, *host)
 		exitOnErr(err)
 
 		metrics, err := client.Metrics()
@@ -95,7 +95,7 @@ func metricCmd() *cobra.Command {
 
 func startCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "start <dc-name>",
+		Use:   "start <dc-c>",
 		Short: "start daemon server",
 		Long:  "start a long running server to handle ankr-hub requests",
 	}
@@ -154,7 +154,7 @@ func taskCmd() *cobra.Command {
 		Long:  "create a new deploy task with your images",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			client, err := task.NewTasker("", *cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			exitOnErr(client.CreateTasks(args[0], args[1:]...))
@@ -170,7 +170,7 @@ func taskCmd() *cobra.Command {
 			replicas, err := strconv.ParseUint(args[2], 10, 32)
 			exitOnErr(err)
 
-			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			client, err := task.NewTasker("", *cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			exitOnErr(client.UpdateTask(args[0], args[1], uint32(replicas), 80, 80))
@@ -183,7 +183,7 @@ func taskCmd() *cobra.Command {
 		Long:  "delete a exist task",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			client, err := task.NewTasker("", *cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			exitOnErr(client.CancelTask(args[0]))
@@ -195,7 +195,7 @@ func taskCmd() *cobra.Command {
 		Short: "list tasks",
 		Long:  "list all tasks running",
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			client, err := task.NewTasker("", *cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			tasks, err := client.ListTask()
@@ -227,7 +227,7 @@ func jobCmd() *cobra.Command {
 		Long:  "create a new (cron)job with your images",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			client, err := task.NewTasker("", *cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			crontab := ""
@@ -244,7 +244,7 @@ func jobCmd() *cobra.Command {
 		Long:  "delete a exist (cron)job",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			client, err := task.NewTasker(*cfgpath, *ns, *host)
+			client, err := task.NewTasker("", *cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			crontab := ""
@@ -279,7 +279,7 @@ func blockchainCmd() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			// collect data
-			clientTask, err := task.NewTasker(*cfgpath, *ns, *host)
+			clientTask, err := task.NewTasker("", *cfgpath, *ns, *host)
 			exitOnErr(err)
 
 			metering, err := clientTask.Metering()

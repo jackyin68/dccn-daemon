@@ -1,6 +1,10 @@
 package task
 
 import (
+	"regexp"
+	"strings"
+	"sync"
+
 	"github.com/Ankr-network/dccn-daemon/task/kube"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -8,17 +12,19 @@ import (
 
 type Tasker struct {
 	client *kube.Client
+	dcName string
 	ns     string
 	host   string
 }
 
-func NewTasker(cfgpath, namespace, ingressHost string) (*Tasker, error) {
+func NewTasker(dcName, cfgpath, namespace, ingressHost string) (*Tasker, error) {
 	client, err := kube.NewClient(cfgpath)
 	if err != nil {
 		return nil, err
 	}
 	return &Tasker{
 		client: client,
+		dcName: dcName,
 		ns:     namespace,
 		host:   ingressHost,
 	}, nil
@@ -57,4 +63,39 @@ func (t *Tasker) rollback(rollbacks []func(*kube.Client) error, err error) error
 		}
 	}
 	return errors.WithMessage(err, "rolled back")
+}
+
+var prefix string
+var once sync.Once
+
+func (t *Tasker) AddPrefix(name string) string {
+	once.Do(func() {
+		if char := regexp.MustCompile(`[A-Z]`).FindString(t.dcName); char != "" {
+			prefix = char
+			return
+		}
+		if char := regexp.MustCompile(`[a-z]`).FindString(t.dcName); char != "" {
+			prefix = strings.ToUpper(char)
+			return
+		}
+		prefix = "A" //Ankr
+	})
+
+	return prefix + name
+}
+
+func (t *Tasker) TrimPrefix(name string) string {
+	once.Do(func() {
+		if char := regexp.MustCompile(`[A-Z]`).FindString(t.dcName); char != "" {
+			prefix = char
+			return
+		}
+		if char := regexp.MustCompile(`[a-z]`).FindString(t.dcName); char != "" {
+			prefix = strings.ToUpper(char)
+			return
+		}
+		prefix = "A" //Ankr
+	})
+
+	return strings.TrimPrefix(name, prefix)
 }

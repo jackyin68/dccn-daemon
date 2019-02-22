@@ -33,7 +33,7 @@ func ServeTask(cfgpath, namespace, ingressHost, hubServer, dcName,
 	tendermintServer, tendermintWsEndpoint string) error {
 	dataCenterName = dcName
 	startTimestamp = uint64(time.Now().UnixNano())
-	tasker, err := task.NewTasker(cfgpath, namespace, ingressHost)
+	tasker, err := task.NewTasker(dataCenterName, cfgpath, namespace, ingressHost)
 	if err != nil {
 		return err
 	}

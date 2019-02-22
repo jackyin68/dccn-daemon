@@ -12,6 +12,7 @@ import (
 )
 
 func (t *Tasker) CreateTasks(name string, images ...string) error {
+	name = t.AddPrefix(name)
 	kubes := []kube.Kube{kube.NewPrepare(t.ns, &types.ManifestService{Name: name})}
 
 	count := len(images)
@@ -33,6 +34,7 @@ func (t *Tasker) CreateTasks(name string, images ...string) error {
 }
 
 func (t *Tasker) CreateJobs(name, crontab string, images ...string) error {
+	name = t.AddPrefix(name)
 	kubes := []kube.Kube{kube.NewPrepare(t.ns, &types.ManifestService{Name: name})}
 
 	count := len(images)
@@ -62,6 +64,7 @@ func (t *Tasker) CreateJobs(name, crontab string, images ...string) error {
 }
 
 func (t *Tasker) UpdateTask(name, image string, replicas, internalPort, externalPort uint32) error {
+	name = t.AddPrefix(name)
 	kubes := []kube.Kube{kube.NewPrepare(t.ns, &types.ManifestService{Name: name})}
 
 	service := types.NewManifestService(name, image)
@@ -84,6 +87,7 @@ func (t *Tasker) UpdateTask(name, image string, replicas, internalPort, external
 }
 
 func (t *Tasker) CancelTask(name string) error {
+	name = t.AddPrefix(name)
 	service := types.NewManifestService(name, "")
 	service.Count = 0
 	expose := &types.ManifestServiceExpose{}
@@ -100,6 +104,7 @@ func (t *Tasker) CancelTask(name string) error {
 	return nil
 }
 func (t *Tasker) CancelJob(name, crontab string) error {
+	name = t.AddPrefix(name)
 	service := types.NewManifestService(name, "")
 	service.Count = 0
 	expose := &types.ManifestServiceExpose{}
