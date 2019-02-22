@@ -24,12 +24,17 @@ func TestTasker_AddPrefix(t *testing.T) {
 		"U123",
 	}, {
 		"lower",
-		fields{"lower"},
+		fields{"1lower"},
 		args{"123"},
 		"L123",
 	}, {
 		"Ankr",
 		fields{""},
+		args{"123"},
+		"A123",
+	}, {
+		"Ankr",
+		fields{"1234"},
 		args{"123"},
 		"A123",
 	}}
