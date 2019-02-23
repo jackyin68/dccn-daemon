@@ -65,6 +65,8 @@ jobs:
             kops export kubecfg --name ${K8S_CLUSTER}.k8s.ankr.network --state s3://kops.${K8S_CLUSTER}.config
             kubectl set image --local -o yaml dccn-daemon=$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dccn-daemon:$BRANCH_NAME$DATE \
               -f kubernetes/dccn-daemon.yaml > kubernetes/dccn-daemon-latest.yaml && rm -f kubernetes/dccn-daemon.yaml
+            kubectl set image --local -o yaml tendermint=$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dccn-tendermint:$BRANCH_NAME \
+              -f kubernetes/tendermint.yaml > kubernetes/tendermint-latest.yaml && rm -f kubernetes/tendermint.yaml
             kubectl apply -f kubernetes
             if ! kubectl rollout status deploy/dccn-daemon --watch=true --timeout=60s; then
               echo "Deploy failed, roll back to previous version"
