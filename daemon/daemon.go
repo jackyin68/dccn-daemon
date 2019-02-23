@@ -113,7 +113,7 @@ func taskReciver(t *task.Tasker, hubServer, dcName string, taskCh chan<- *taskCt
 			glog.Errorln("Failed to receive task:", err)
 
 		} else {
-			glog.V(1).Infof("new task: %v", in)
+			glog.V(1).Infof("new task/heartBeat: %v", in)
 			taskCh <- &taskCtx{
 				DCStream: in,
 				stream:   stream,
