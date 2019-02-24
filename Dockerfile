@@ -7,6 +7,7 @@ RUN apk add --no-cache git
 WORKDIR /dccn-daemon
 COPY . .
 
+RUN CGO_ENABLED=0 go vet && CGO_ENABLED=0 go test -v
 RUN CGO_ENABLED=0 go build -v -ldflags="-s -w \
     -X main.version=$(git rev-parse --abbrev-ref HEAD) \
     -X main.commit=$(git rev-parse --short HEAD) \
