@@ -254,7 +254,7 @@ func heartBeat(t *task.Tasker, dcName string, stream grpc_dcmgr.DCStreamer_Serve
 	if metrics, err := t.Metrics(); err != nil {
 		glog.V(1).Infoln(err)
 	} else {
-		metrics.TotalCPU = metrics.TotalCPU/1000
+		metrics.TotalCPU = metrics.TotalCPU / 1000
 		data, _ := json.Marshal(metrics)
 		message.DataCenter.DcHeartbeatReport.Metrics = string(data)
 	}
